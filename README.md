@@ -1,6 +1,6 @@
 # Valence
 
-> **Valence** is inspired by the chemistry concept of the ability of atoms to bond and form new structures.
+> **Valence** (/ˈveɪ.ləns/) is inspired by the chemistry concept of the ability of atoms to bond and form new structures.
 >
 > Just like atoms combine in different ways, Valence treats personal data (names, dates, hobbies, etc.) as building blocks. It intelligently mixes, mutates, and combines them using rules, suffixes, and separators to generate a wide range of possible password combinations.
 
