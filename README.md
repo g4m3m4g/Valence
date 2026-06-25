@@ -134,3 +134,51 @@ The test suite covers case mutations, suffix handling, combinator matrices, birt
 ```
 
 ```
+
+
+# ⚖️ Usage Regulation, Disclaimer & Responsibility Agreement
+
+## 1. Authorized Educational & Defensive Use Only
+
+This tool is developed, distributed, and maintained **solely for authorized security research, educational purposes, and defensive security auditing**.
+
+It is designed strictly to assist:
+
+- **System Administrators & IAM Teams:** To audit password strength policies and validate that user credentials do not contain easily guessable corporate or personal identifiers.
+- **Authorized Penetration Testers:** To demonstrate risk to clients during explicitly scoped, legally contracted security engagements.
+- **Academic Researchers:** To study human credential-generation behavioral patterns and defensive mitigation strategies.
+
+## 2. Strict Prohibition of Unauthorized Activity
+
+**Any utilization of this tool for unauthorized access, malicious credential stuffing, corporate espionage, harassment, stalking, or any form of cyber-attacks is strictly prohibited.**
+
+You must **never** ingest personal details or generate wordlists targeting any individual or organization unless you have obtained **explicit, written, and legally binding authorization** from the rightful owner of those assets.
+
+## 3. Legal Compliance & Jurisdiction
+
+As the user, you bear sole responsibility for ensuring that your use of this software complies with all applicable local, national, and international laws. Unauthorized use of this tool may violate major cybercrime statutes, including but not limited to:
+
+- **United States:** Computer Fraud and Abuse Act (CFAA) (18 U.S.C. § 1030)
+- **United Kingdom:** Computer Misuse Act 1990
+- **European Union:** Cybercrime Convention/Directives
+- **Thailand:** Computer Crimes Act B.E. 2550 (and its amendments)
+
+## 4. Limitation of Liability & Exclusion of Warranty
+
+```text
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+IN NO EVENT SHALL THE AUTHORS, CONTRIBUTORS, OR COPYRIGHT HOLDERS BE LIABLE
+FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT, OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+```
+
+By compiling, downloading, or executing this software, you explicitly agree that **the authors and contributors accept absolutely no liability** for any misuse, damage, data breaches, service disruptions, or legal consequences caused by your deployment of the tool.
+
+## 5. Ethical OSINT Ingestion Warning
+
+This tool relies on user-supplied Open Source Intelligence (OSINT) data. Users are strictly cautioned against violating privacy laws, data protection regulations (such as GDPR, CCPA, or PDPA), or social media platform Terms of Service when gathering profiling data. Scraping or collecting personal details without consent may constitute an independent legal violation.
