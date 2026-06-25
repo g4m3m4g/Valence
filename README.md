@@ -1,5 +1,9 @@
 # Valence
 
+> **Valence** is inspired by the chemistry concept of the ability of atoms to bond and form new structures.
+>
+> Just like atoms combine in different ways, Valence treats personal data (names, dates, hobbies, etc.) as building blocks. It intelligently mixes, mutates, and combines them using rules, suffixes, and separators to generate a wide range of possible password combinations.
+
 A targeted wordlist generator and password-profiling tool designed for use during **authorized** security awareness audits and penetration tests.
 
 By inputting a structured personal profile (names, nicknames, birthdates, pets, partners, or hobbies), Valence automatically generates a deduplicated list of potential password candidates. The output mirrors common human password-creation habits, including case mutations, padding, word combinations, and year suffixes.
@@ -134,7 +138,6 @@ The test suite covers case mutations, suffix handling, combinator matrices, birt
 ```
 
 ```
-
 
 # ⚖️ Usage Regulation, Disclaimer & Responsibility Agreement
 
