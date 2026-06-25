@@ -1,0 +1,175 @@
+// Command valence generates a targeted wordlist of password candidates
+// from a structured personal profile, for use during authorized security
+// awareness audits and penetration tests.
+//
+// Usage:
+//
+//	valence -first John -last Smith -pet Max -partner Sarah \
+//	    -birthdate 1990-05-15 -o johnsmith.txt
+//
+// Run `valence -h` for the full flag list.
+package main
+
+import (
+	"bufio"
+	"flag"
+	"fmt"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/g4m3m4g/valence/pkg/profiler"
+)
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	var (
+		firstName     string
+		lastName      string
+		nickname      string
+		birthDateStr  string
+		partnerName   string
+		petName       string
+		favoriteThing string
+		outputPath    string
+		minLen        int
+		maxLen        int
+		suffixesRaw   string
+		separatorsRaw string
+		noPairs       bool
+		maxCandidates int
+	)
+
+	defaults := profiler.DefaultOptions()
+
+	flag.StringVar(&firstName, "first", "", "Target's first name")
+	flag.StringVar(&lastName, "last", "", "Target's last name")
+	flag.StringVar(&nickname, "nick", "", "Target's nickname or alias")
+	flag.StringVar(&birthDateStr, "birthdate", "", "Target's date of birth, format YYYY-MM-DD")
+	flag.StringVar(&partnerName, "partner", "", "Name of target's partner/spouse")
+	flag.StringVar(&petName, "pet", "", "Name of target's pet")
+	flag.StringVar(&favoriteThing, "favorite", "", "Target's favorite team, hobby, or band")
+
+	// Both -o and -output write to the same variable; either spelling works.
+	flag.StringVar(&outputPath, "o", "", "Output file path (default: stdout)")
+	flag.StringVar(&outputPath, "output", "", "Output file path (default: stdout)")
+
+	flag.IntVar(&minLen, "minlen", defaults.MinLength, "Minimum candidate length")
+	flag.IntVar(&maxLen, "maxlen", defaults.MaxLength, "Maximum candidate length (0 = unlimited)")
+	flag.StringVar(&suffixesRaw, "suffixes", strings.Join(defaults.Suffixes, ","),
+		"Comma-separated suffixes to append to candidates (include an empty entry to also keep the bare form)")
+	flag.StringVar(&separatorsRaw, "separators", strings.Join(defaults.Separators, ","),
+		"Comma-separated separators used when combining two profile fields")
+	flag.BoolVar(&noPairs, "no-pairs", false, "Disable pairwise combination of distinct profile fields (smaller, faster output)")
+	flag.IntVar(&maxCandidates, "max", 0, "Maximum number of candidates to output (0 = unlimited)")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "valence - targeted wordlist generator for security awareness audits & pentests\n\n")
+		fmt.Fprintf(os.Stderr, "For AUTHORIZED security testing and awareness training only.\n\n")
+		fmt.Fprintf(os.Stderr, "Usage:\n  %s [flags]\n\nFlags:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+
+	flag.Parse()
+
+	profile := profiler.Profile{
+		FirstName:     firstName,
+		LastName:      lastName,
+		Nickname:      nickname,
+		PartnerName:   partnerName,
+		PetName:       petName,
+		FavoriteThing: favoriteThing,
+	}
+
+	if birthDateStr != "" {
+		bd, err := profiler.ParseBirthDate(birthDateStr)
+		if err != nil {
+			return err
+		}
+		profile.BirthDate = bd
+	}
+
+	if len(profile.Tokens()) == 0 {
+		return fmt.Errorf("at least one profile field must be supplied; run with -h to see available flags")
+	}
+
+	opts := defaults
+	opts.MinLength = minLen
+	opts.MaxLength = maxLen
+	opts.IncludePairs = !noPairs
+	opts.MaxCandidates = maxCandidates
+	opts.Suffixes = splitNonEmpty(suffixesRaw, true) // allow "" entries through deliberately
+	opts.Separators = splitNonEmpty(separatorsRaw, true)
+
+	start := time.Now()
+	candidates := profiler.Generate(profile, opts)
+	elapsed := time.Since(start)
+
+	if err := writeOutput(candidates, outputPath); err != nil {
+		return fmt.Errorf("writing output: %w", err)
+	}
+
+	// Execution metadata always goes to stderr so stdout stays clean for piping.
+	fmt.Fprintf(os.Stderr, "Generated %d unique permutations in %s\n", len(candidates), elapsed)
+	if outputPath != "" {
+		fmt.Fprintf(os.Stderr, "Wordlist written to %s\n", outputPath)
+	}
+
+	return nil
+}
+
+// splitNonEmpty splits a comma-separated flag value. When keepEmpty is true,
+// empty entries produced by a leading/trailing/doubled comma (e.g. ",123")
+// are preserved, since an empty suffix/separator is a meaningful choice
+// (it means "also keep the bare/un-joined form").
+func splitNonEmpty(raw string, keepEmpty bool) []string {
+	if raw == "" {
+		if keepEmpty {
+			return []string{""}
+		}
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	if keepEmpty {
+		return parts
+	}
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// writeOutput streams one candidate per line to either the given file path
+// or, if path is empty, to stdout.
+func writeOutput(words []string, path string) error {
+	var w *bufio.Writer
+	if path == "" {
+		w = bufio.NewWriter(os.Stdout)
+	} else {
+		f, err := os.Create(path)
+		if err != nil {
+			return fmt.Errorf("creating output file: %w", err)
+		}
+		defer f.Close()
+		w = bufio.NewWriter(f)
+	}
+
+	for _, word := range words {
+		if _, err := w.WriteString(word); err != nil {
+			return err
+		}
+		if err := w.WriteByte('\n'); err != nil {
+			return err
+		}
+	}
+	return w.Flush()
+}
