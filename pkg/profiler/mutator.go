@@ -55,6 +55,44 @@ func AppendSuffixes(base string, suffixes []string) []string {
 	return out
 }
 
+// ToggleCaseVariants returns all 2^n combinations of upper/lower case for
+// every letter position in s. For example "Jo" produces ["jo","Jo","jO","JO"].
+// Non-letter runes are kept as-is. Returns just [s] for empty or digit-only input.
+func ToggleCaseVariants(s string) []string {
+	if s == "" {
+		return nil
+	}
+	runes := []rune(strings.ToLower(s))
+	var alphaIdx []int
+	for i, r := range runes {
+		if unicode.IsLetter(r) {
+			alphaIdx = append(alphaIdx, i)
+		}
+	}
+	n := len(alphaIdx)
+	if n == 0 {
+		return []string{s}
+	}
+	total := 1 << n
+	seen := make(map[string]struct{}, total)
+	out := make([]string, 0, total)
+	for mask := 0; mask < total; mask++ {
+		v := make([]rune, len(runes))
+		copy(v, runes)
+		for bit, idx := range alphaIdx {
+			if mask&(1<<bit) != 0 {
+				v[idx] = unicode.ToUpper(v[idx])
+			}
+		}
+		sv := string(v)
+		if _, exists := seen[sv]; !exists {
+			seen[sv] = struct{}{}
+			out = append(out, sv)
+		}
+	}
+	return out
+}
+
 // Combine joins two non-empty strings using each separator in separators,
 // producing both orderings (a+sep+b and b+sep+a). This models the very
 // common habit of gluing together two pieces of personal significance, e.g.

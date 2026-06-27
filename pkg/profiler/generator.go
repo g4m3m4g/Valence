@@ -34,6 +34,12 @@ type Options struct {
 	// 0 means unlimited. This is a safety valve against combinatorial
 	// explosion on profiles with many populated fields.
 	MaxCandidates int
+
+	// IncludeToggleCase enables per-character case toggling, producing all
+	// 2^n upper/lower combinations for each letter token (e.g. "john",
+	// "John", "jOhn", "JOhn", ...). Can significantly increase output size
+	// for long tokens.
+	IncludeToggleCase bool
 }
 
 // DefaultOptions returns a reasonable, common-habit-driven default
@@ -49,8 +55,9 @@ func DefaultOptions() Options {
 		Separators:    []string{"", "_", ".", "-"},
 		MinLength:     4,
 		MaxLength:     32,
-		IncludePairs:  true,
-		MaxCandidates: 0,
+		IncludePairs:      true,
+		IncludeToggleCase: true,
+		MaxCandidates:     0,
 	}
 }
 
@@ -75,7 +82,16 @@ func Generate(p Profile, opts Options) []string {
 
 	// Stage 1: individual token case variants + suffixes.
 	for _, t := range tokens {
-		for _, cv := range CaseVariants(t.Value) {
+		variants := CaseVariants(t.Value)
+		if opts.IncludeToggleCase {
+			variants = append(variants, ToggleCaseVariants(t.Value)...)
+		}
+		seen := make(map[string]struct{}, len(variants))
+		for _, cv := range variants {
+			if _, dup := seen[cv]; dup {
+				continue
+			}
+			seen[cv] = struct{}{}
 			addFiltered(candidates, cv, opts)
 			for _, withSuffix := range AppendSuffixes(cv, opts.Suffixes) {
 				addFiltered(candidates, withSuffix, opts)
