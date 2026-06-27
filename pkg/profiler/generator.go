@@ -40,6 +40,12 @@ type Options struct {
 	// "John", "jOhn", "JOhn", ...). Can significantly increase output size
 	// for long tokens.
 	IncludeToggleCase bool
+
+	// IncludeLeet enables leet-speak substitutions (a→@/4, e→3, i→1/!,
+	// o→0, s→$/5, t→7, …) applied in 1-, 2-, and 3-rule combinations.
+	// This models the common habit of swapping letters to satisfy "complexity"
+	// requirements: "j0hn", "j@ne", "p@$$w0rd", etc.
+	IncludeLeet bool
 }
 
 // DefaultOptions returns a reasonable, common-habit-driven default
@@ -49,14 +55,24 @@ type Options struct {
 func DefaultOptions() Options {
 	return Options{
 		Suffixes: []string{
-			"", "1", "12", "123", "1234", "!", "!!", "?",
-			"007", "69", "01", "2023", "2024", "2025", "2026",
+			// bare form
+			"",
+			// pure digit runs — the most common suffix class
+			"0", "1", "2", "01", "07", "12", "23", "69", "99", "00",
+			"11", "22", "123", "007", "1234",
+			// symbol-only (often added to satisfy complexity rules)
+			"!", "!!", "?", "@", "#", "*",
+			// number+symbol combos that satisfy complexity requirements
+			"1!", "12!", "123!", "1234!", "@1", "@12", "@123", "#1", "#123",
+			// years — current and recent
+			"2020", "2021", "2022", "2023", "2024", "2025", "2026",
 		},
 		Separators:    []string{"", "_", ".", "-"},
 		MinLength:     4,
 		MaxLength:     32,
 		IncludePairs:      true,
 		IncludeToggleCase: true,
+		IncludeLeet:       true,
 		MaxCandidates:     0,
 	}
 }
@@ -80,12 +96,25 @@ func Generate(p Profile, opts Options) []string {
 
 	tokens := p.Tokens()
 
-	// Stage 1: individual token case variants + suffixes.
+	// Stage 1: individual token mutations + suffixes.
 	for _, t := range tokens {
+		// Base case variants (lower, upper, title, original).
 		variants := CaseVariants(t.Value)
+
+		// Per-character toggle case (all 2^n upper/lower combos).
 		if opts.IncludeToggleCase {
 			variants = append(variants, ToggleCaseVariants(t.Value)...)
 		}
+
+		// Leet-speak substitution variants; apply CaseVariants to each so
+		// "j0hn" also yields "J0hn", "J0HN", etc.
+		if opts.IncludeLeet {
+			for _, lv := range LeetVariants(t.Value) {
+				variants = append(variants, CaseVariants(lv)...)
+			}
+		}
+
+		// Deduplicate across all variant sources before suffix expansion.
 		seen := make(map[string]struct{}, len(variants))
 		for _, cv := range variants {
 			if _, dup := seen[cv]; dup {

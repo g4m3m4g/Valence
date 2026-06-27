@@ -99,7 +99,44 @@ func (p Profile) Tokens() []Token {
 	add("PetName", p.PetName)
 	add("FavoriteThing", p.FavoriteThing)
 
+	// Derived: initial-based combinations people use to shorten their name.
+	fn := strings.TrimSpace(p.FirstName)
+	ln := strings.TrimSpace(p.LastName)
+	if fn != "" && ln != "" {
+		fnR := []rune(fn)
+		lnR := []rune(ln)
+		add("InitialLastName", strings.ToUpper(string(fnR[:1]))+ln)   // JSmith
+		add("FirstNameInitial", fn+strings.ToUpper(string(lnR[:1]))) // JohnS
+	}
+
+	// Derived: reversed spellings of name-like fields (some people do this).
+	for _, pair := range []struct{ label, value string }{
+		{"FirstNameRev", p.FirstName},
+		{"LastNameRev", p.LastName},
+		{"NicknameRev", p.Nickname},
+		{"PetNameRev", p.PetName},
+		{"PartnerNameRev", p.PartnerName},
+	} {
+		trimmed := strings.TrimSpace(pair.value)
+		if trimmed == "" {
+			continue
+		}
+		lower := strings.ToLower(trimmed)
+		rev := reverseString(lower)
+		if rev != lower { // skip palindromes
+			add(pair.label, rev)
+		}
+	}
+
 	tokens = append(tokens, p.BirthDate.Tokens()...)
 
 	return tokens
+}
+
+func reverseString(s string) string {
+	r := []rune(s)
+	for i, j := 0, len(r)-1; i < j; i, j = i+1, j-1 {
+		r[i], r[j] = r[j], r[i]
+	}
+	return string(r)
 }

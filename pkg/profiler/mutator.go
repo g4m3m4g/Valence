@@ -55,6 +55,81 @@ func AppendSuffixes(base string, suffixes []string) []string {
 	return out
 }
 
+// leetRules lists the leet-speak substitutions real users apply to make a
+// password look "complex". Each rule replaces all occurrences of the source
+// rune with the target string.
+var leetRules = []struct {
+	from rune
+	to   string
+}{
+	{'a', "@"},
+	{'a', "4"},
+	{'e', "3"},
+	{'i', "1"},
+	{'i', "!"},
+	{'o', "0"},
+	{'s', "$"},
+	{'s', "5"},
+	{'t', "7"},
+	{'b', "8"},
+	{'g', "9"},
+	{'l', "1"},
+}
+
+// LeetVariants returns variants of s with common leet-speak substitutions
+// applied in combinations of 1, 2, and 3 simultaneous rules. Only rules
+// whose source character actually appears in s are considered. The original
+// value is excluded. Returns nil for empty input or no substitutable chars.
+func LeetVariants(s string) []string {
+	if s == "" {
+		return nil
+	}
+	lower := strings.ToLower(s)
+
+	type rule struct {
+		from rune
+		to   string
+	}
+	var applicable []rule
+	for _, r := range leetRules {
+		if strings.ContainsRune(lower, r.from) {
+			applicable = append(applicable, rule{r.from, r.to})
+		}
+	}
+	if len(applicable) == 0 {
+		return nil
+	}
+
+	seen := map[string]struct{}{lower: {}, s: {}}
+	var out []string
+
+	applyRules := func(indices ...int) string {
+		v := lower
+		for _, idx := range indices {
+			v = strings.ReplaceAll(v, string(applicable[idx].from), applicable[idx].to)
+		}
+		return v
+	}
+	add := func(v string) {
+		if _, exists := seen[v]; !exists {
+			seen[v] = struct{}{}
+			out = append(out, v)
+		}
+	}
+
+	n := len(applicable)
+	for i := 0; i < n; i++ {
+		add(applyRules(i))
+		for j := i + 1; j < n; j++ {
+			add(applyRules(i, j))
+			for k := j + 1; k < n; k++ {
+				add(applyRules(i, j, k))
+			}
+		}
+	}
+	return out
+}
+
 // ToggleCaseVariants returns all 2^n combinations of upper/lower case for
 // every letter position in s. For example "Jo" produces ["jo","Jo","jO","JO"].
 // Non-letter runes are kept as-is. Returns just [s] for empty or digit-only input.

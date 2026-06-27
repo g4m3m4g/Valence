@@ -43,6 +43,7 @@ func run() error {
 		suffixesRaw   string
 		separatorsRaw string
 		noPairs       bool
+		noLeet        bool
 		maxCandidates int
 	)
 
@@ -67,6 +68,7 @@ func run() error {
 	flag.StringVar(&separatorsRaw, "separators", strings.Join(defaults.Separators, ","),
 		"Comma-separated separators used when combining two profile fields")
 	flag.BoolVar(&noPairs, "no-pairs", false, "Disable pairwise combination of distinct profile fields (smaller, faster output)")
+	flag.BoolVar(&noLeet, "no-leet", false, "Disable leet-speak substitutions (a→@/4, e→3, i→1/!, o→0, s→$/5, t→7, …)")
 	flag.IntVar(&maxCandidates, "max", 0, "Maximum number of candidates to output (0 = unlimited)")
 
 	flag.Usage = func() {
@@ -118,6 +120,7 @@ func run() error {
 	opts.MinLength = minLen
 	opts.MaxLength = maxLen
 	opts.IncludePairs = !noPairs
+	opts.IncludeLeet = !noLeet
 	opts.MaxCandidates = maxCandidates
 	opts.Suffixes = splitNonEmpty(suffixesRaw, true) // allow "" entries through deliberately
 	opts.Separators = splitNonEmpty(separatorsRaw, true)

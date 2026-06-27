@@ -5,6 +5,199 @@ import (
 	"testing"
 )
 
+func TestLeetVariants(t *testing.T) {
+	t.Run("single substitution", func(t *testing.T) {
+		if !setOf(LeetVariants("john"))["j0hn"] {
+			t.Error("expected j0hn (o→0)")
+		}
+	})
+
+	t.Run("two substitutions", func(t *testing.T) {
+		got := setOf(LeetVariants("jane"))
+		for _, want := range []string{"j@ne", "j4ne", "jan3", "j@n3", "j4n3"} {
+			if !got[want] {
+				t.Errorf("expected leet variant %q", want)
+			}
+		}
+	})
+
+	t.Run("three substitutions", func(t *testing.T) {
+		got := setOf(LeetVariants("master"))
+		// a→@, e→3, s→$ — three distinct char types
+		if !got["m@$t3r"] {
+			t.Error("expected m@$t3r (a→@, s→$, e→3)")
+		}
+	})
+
+	t.Run("original excluded", func(t *testing.T) {
+		for _, v := range LeetVariants("john") {
+			if v == "john" || v == "John" {
+				t.Errorf("LeetVariants should not include the original value, got %q", v)
+			}
+		}
+	})
+
+	t.Run("no substitutable chars", func(t *testing.T) {
+		// "zzz" has no chars in the leet table
+		if got := LeetVariants("zzz"); got != nil {
+			t.Errorf("expected nil for non-substitutable input, got %v", got)
+		}
+	})
+
+	t.Run("empty input", func(t *testing.T) {
+		if got := LeetVariants(""); got != nil {
+			t.Errorf("LeetVariants(\"\") = %v, want nil", got)
+		}
+	})
+
+	t.Run("no duplicates", func(t *testing.T) {
+		got := LeetVariants("assassin")
+		seen := map[string]bool{}
+		for _, v := range got {
+			if seen[v] {
+				t.Errorf("duplicate leet variant: %q", v)
+			}
+			seen[v] = true
+		}
+	})
+}
+
+func TestToggleCaseVariants(t *testing.T) {
+	t.Run("all 2^n combos present", func(t *testing.T) {
+		got := setOf(ToggleCaseVariants("ab"))
+		for _, want := range []string{"ab", "Ab", "aB", "AB"} {
+			if !got[want] {
+				t.Errorf("missing toggle variant %q", want)
+			}
+		}
+		if len(got) != 4 {
+			t.Errorf("want 4 variants for 2-letter input, got %d: %v", len(got), got)
+		}
+	})
+
+	t.Run("non-letter runes unchanged", func(t *testing.T) {
+		got := setOf(ToggleCaseVariants("a1b"))
+		// digit position fixed; only a and b toggle → 4 variants
+		for _, want := range []string{"a1b", "A1b", "a1B", "A1B"} {
+			if !got[want] {
+				t.Errorf("missing toggle variant %q", want)
+			}
+		}
+	})
+
+	t.Run("no duplicates", func(t *testing.T) {
+		got := ToggleCaseVariants("John")
+		seen := map[string]bool{}
+		for _, v := range got {
+			if seen[v] {
+				t.Errorf("duplicate toggle variant: %q", v)
+			}
+			seen[v] = true
+		}
+		if len(got) != 16 { // 2^4 for 4 letters
+			t.Errorf("want 16 variants for John, got %d", len(got))
+		}
+	})
+
+	t.Run("empty input", func(t *testing.T) {
+		if got := ToggleCaseVariants(""); got != nil {
+			t.Errorf("ToggleCaseVariants(\"\") = %v, want nil", got)
+		}
+	})
+}
+
+func TestProfileTokens_Initials(t *testing.T) {
+	p := Profile{FirstName: "John", LastName: "Smith"}
+	vals := tokenValues(p.Tokens())
+
+	if !vals["JSmith"] {
+		t.Error("expected InitialLastName token JSmith")
+	}
+	if !vals["JohnS"] {
+		t.Error("expected FirstNameInitial token JohnS")
+	}
+}
+
+func TestProfileTokens_Reversed(t *testing.T) {
+	p := Profile{FirstName: "John", LastName: "Smith", PetName: "Max"}
+	vals := tokenValues(p.Tokens())
+
+	if !vals["nhoj"] {
+		t.Error("expected reversed FirstName token nhoj")
+	}
+	if !vals["htims"] {
+		t.Error("expected reversed LastName token htims")
+	}
+	if !vals["xam"] {
+		t.Error("expected reversed PetName token xam")
+	}
+}
+
+func TestProfileTokens_PalindromeSkipped(t *testing.T) {
+	p := Profile{FirstName: "aba"}
+	vals := tokenValues(p.Tokens())
+	if vals["aba"] {
+		// "aba" reversed is still "aba" — should not appear as a *Rev token
+		// (it may appear as the FirstName token itself, but we check the Rev label)
+	}
+	for _, tok := range p.Tokens() {
+		if tok.Label == "FirstNameRev" {
+			t.Errorf("palindrome %q should not produce a Rev token, got label %q value %q", "aba", tok.Label, tok.Value)
+		}
+	}
+}
+
+func TestGenerate_LeetVariantsPresent(t *testing.T) {
+	p := Profile{FirstName: "John"}
+	out := setOf(Generate(p, DefaultOptions()))
+
+	for _, want := range []string{"j0hn", "J0hn", "J0HN"} {
+		if !out[want] {
+			t.Errorf("expected leet variant %q in output", want)
+		}
+	}
+}
+
+func TestGenerate_LeetDisabled(t *testing.T) {
+	p := Profile{FirstName: "John"}
+	opts := DefaultOptions()
+	opts.IncludeLeet = false
+	out := setOf(Generate(p, opts))
+
+	if out["j0hn"] {
+		t.Error("leet variant j0hn should not appear when IncludeLeet=false")
+	}
+}
+
+func TestGenerate_InitialsAndReversedPresent(t *testing.T) {
+	p := Profile{FirstName: "John", LastName: "Smith"}
+	out := setOf(Generate(p, DefaultOptions()))
+
+	for _, want := range []string{"JSmith", "JohnS", "nhoj", "htims"} {
+		if !out[want] {
+			t.Errorf("expected derived token %q in output", want)
+		}
+	}
+}
+
+// helpers
+
+func setOf(ss []string) map[string]bool {
+	m := make(map[string]bool, len(ss))
+	for _, s := range ss {
+		m[s] = true
+	}
+	return m
+}
+
+func tokenValues(tokens []Token) map[string]bool {
+	m := make(map[string]bool, len(tokens))
+	for _, tok := range tokens {
+		m[tok.Value] = true
+	}
+	return m
+}
+
 func TestCaseVariants(t *testing.T) {
 	got := CaseVariants("John")
 	want := map[string]bool{"John": true, "john": true, "JOHN": true}
