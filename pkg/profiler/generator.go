@@ -56,6 +56,18 @@ type Options struct {
 	// IncludePrefixes enables prefix prepending. When true, each variant cv
 	// produces: cv, cv+suffix, prefix+cv, and prefix+cv+suffix.
 	IncludePrefixes bool
+
+	// CommonWords is a list of words that are combined with every profile
+	// token (but not with each other). Models the habit of gluing an
+	// emotionally significant word to a personal name: "johnlove",
+	// "lovesmith", "ilovejohn", "john_forever", etc.
+	// Only active when IncludeCommonWords is true.
+	CommonWords []string
+
+	// IncludeCommonWords enables common-word mixing. Each word in CommonWords
+	// is paired with every profile token using the configured Separators, then
+	// case variants and suffixes are applied to each combination.
+	IncludeCommonWords bool
 }
 
 // DefaultOptions returns a reasonable, common-habit-driven default
@@ -83,11 +95,18 @@ func DefaultOptions() Options {
 		Prefixes: []string{
 			"!", "1", "12", "123", "0", "@",
 		},
-		IncludePairs:      true,
-		IncludeToggleCase: true,
-		IncludeLeet:       true,
-		IncludePrefixes:   true,
-		MaxCandidates:     0,
+		CommonWords: []string{
+			"love", "iloveyou", "god", "king", "queen",
+			"dragon", "monkey", "master", "pass", "password",
+			"star", "shadow", "sunshine", "super", "baby",
+			"angel", "princess", "football", "forever", "lucky",
+		},
+		IncludePairs:       true,
+		IncludeToggleCase:  true,
+		IncludeLeet:        true,
+		IncludePrefixes:    true,
+		IncludeCommonWords: true,
+		MaxCandidates:      0,
 	}
 }
 
@@ -105,7 +124,10 @@ func DefaultOptions() Options {
 //  4. If IncludePairs is enabled, combine every distinct pair of tokens
 //     using the configured separators, then apply case variants and
 //     suffixes to each combination as well.
-//  5. Deduplicate via a set, filter by length, sort for deterministic
+//  5. If IncludeCommonWords is enabled, combine every profile token with
+//     every word in CommonWords (but not words with each other), then
+//     apply case variants and suffixes to each combination.
+//  6. Deduplicate via a set, filter by length, sort for deterministic
 //     output, and optionally truncate to MaxCandidates.
 func Generate(p Profile, opts Options) []string {
 	candidates := make(map[string]struct{})
@@ -170,6 +192,38 @@ func Generate(p Profile, opts Options) []string {
 					}
 					for _, withSuffix := range AppendSuffixes(combo, opts.Suffixes) {
 						addFiltered(candidates, withSuffix, opts)
+					}
+				}
+			}
+		}
+	}
+
+	// Stage 3: common-word × profile-token combinations.
+	// Words are only paired with profile tokens, never with each other,
+	// to keep output targeted rather than generic.
+	if opts.IncludeCommonWords && len(opts.CommonWords) > 0 {
+		for _, tok := range tokens {
+			a := strings.ToLower(tok.Value)
+			for _, word := range opts.CommonWords {
+				w := strings.ToLower(strings.TrimSpace(word))
+				if w == "" {
+					continue
+				}
+				for _, combo := range Combine(a, w, opts.Separators) {
+					addFiltered(candidates, combo, opts)
+					for _, cv := range CaseVariants(combo) {
+						addFiltered(candidates, cv, opts)
+						for _, ws := range AppendSuffixes(cv, opts.Suffixes) {
+							addFiltered(candidates, ws, opts)
+						}
+						if opts.IncludePrefixes {
+							for _, wp := range PrependPrefixes(cv, opts.Prefixes) {
+								addFiltered(candidates, wp, opts)
+								for _, wps := range AppendSuffixes(wp, opts.Suffixes) {
+									addFiltered(candidates, wps, opts)
+								}
+							}
+						}
 					}
 				}
 			}

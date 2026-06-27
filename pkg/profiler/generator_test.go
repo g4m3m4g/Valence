@@ -5,6 +5,110 @@ import (
 	"testing"
 )
 
+func TestGenerate_CommonWordMixing(t *testing.T) {
+	p := Profile{FirstName: "John", LastName: "Smith"}
+	opts := DefaultOptions()
+	out := setOf(Generate(p, opts))
+
+	// bare combos with separators
+	for _, want := range []string{
+		"johnlove", "lovejohn",
+		"john_love", "love_john",
+		"john.love", "love.john",
+		"smithlove", "lovesmith",
+	} {
+		if !out[want] {
+			t.Errorf("expected common-word combo %q in output", want)
+		}
+	}
+
+	// case variants of combos
+	for _, want := range []string{"Johnlove", "JOHNLOVE", "Lovejohn"} {
+		if !out[want] {
+			t.Errorf("expected case variant of common-word combo %q", want)
+		}
+	}
+
+	// combo + suffix
+	for _, want := range []string{"johnlove123", "johnlove!", "lovejohn1"} {
+		if !out[want] {
+			t.Errorf("expected combo+suffix %q", want)
+		}
+	}
+
+	// prefix + combo
+	for _, want := range []string{"!johnlove", "1lovejohn"} {
+		if !out[want] {
+			t.Errorf("expected prefix+combo %q", want)
+		}
+	}
+}
+
+func TestGenerate_CommonWordsNotStandalone(t *testing.T) {
+	// Common words should not appear by themselves (only combined with profile tokens).
+	p := Profile{FirstName: "John"}
+	opts := DefaultOptions()
+	out := setOf(Generate(p, opts))
+
+	for _, word := range opts.CommonWords {
+		// bare word alone should not be in output
+		if out[word] {
+			t.Errorf("common word %q should not appear standalone in output", word)
+		}
+		// words paired only with each other should not appear
+		for _, other := range opts.CommonWords {
+			if word == other {
+				continue
+			}
+			if out[word+other] || out[other+word] {
+				t.Errorf("common words should not be paired with each other: %q + %q", word, other)
+			}
+		}
+	}
+}
+
+func TestGenerate_CommonWordsDisabled(t *testing.T) {
+	p := Profile{FirstName: "John"}
+	opts := DefaultOptions()
+	opts.IncludeCommonWords = false
+	out := setOf(Generate(p, opts))
+
+	for _, unwanted := range []string{"johnlove", "lovejohn", "johndragon"} {
+		if out[unwanted] {
+			t.Errorf("common-word combo %q should not appear when IncludeCommonWords=false", unwanted)
+		}
+	}
+}
+
+func TestGenerate_CustomCommonWords(t *testing.T) {
+	p := Profile{FirstName: "John"}
+	opts := DefaultOptions()
+	opts.CommonWords = []string{"hero", "ninja"}
+	out := setOf(Generate(p, opts))
+
+	for _, want := range []string{"johnhero", "herojohn", "johnninja", "ninjajohn"} {
+		if !out[want] {
+			t.Errorf("expected custom common-word combo %q", want)
+		}
+	}
+	// default words should not appear
+	if out["johnlove"] {
+		t.Error("default word combo johnlove should not appear when custom words override it")
+	}
+}
+
+func TestGenerate_NoDuplicatesWithCommonWords(t *testing.T) {
+	p := Profile{FirstName: "John", LastName: "Smith", PetName: "Max"}
+	out := Generate(p, DefaultOptions())
+	seen := make(map[string]bool, len(out))
+	for _, w := range out {
+		if seen[w] {
+			t.Fatalf("duplicate candidate found: %q", w)
+		}
+		seen[w] = true
+	}
+}
+
 func TestPrependPrefixes(t *testing.T) {
 	got := PrependPrefixes("john", []string{"!", "1", "123"})
 	want := []string{"!john", "1john", "123john"}

@@ -46,6 +46,8 @@ func run() error {
 		noLeet        bool
 		noPrefixes    bool
 		prefixesRaw   string
+		noWords       bool
+		wordsRaw      string
 		maxCandidates int
 	)
 
@@ -74,6 +76,9 @@ func run() error {
 	flag.BoolVar(&noPrefixes, "no-prefixes", false, "Disable prefix prepending (!, 1, 123, … before each candidate)")
 	flag.StringVar(&prefixesRaw, "prefixes", strings.Join(defaults.Prefixes, ","),
 		"Comma-separated prefixes to prepend to candidates")
+	flag.BoolVar(&noWords, "no-words", false, "Disable common-word mixing (love, god, dragon, … paired with profile tokens)")
+	flag.StringVar(&wordsRaw, "words", strings.Join(defaults.CommonWords, ","),
+		"Comma-separated common words to mix with profile tokens")
 	flag.IntVar(&maxCandidates, "max", 0, "Maximum number of candidates to output (0 = unlimited)")
 
 	flag.Usage = func() {
@@ -133,6 +138,8 @@ func run() error {
 	opts.IncludeLeet = !noLeet
 	opts.IncludePrefixes = !noPrefixes
 	opts.Prefixes = splitNonEmpty(prefixesRaw, false)
+	opts.IncludeCommonWords = !noWords
+	opts.CommonWords = splitNonEmpty(wordsRaw, false)
 	opts.MaxCandidates = maxCandidates
 	opts.Suffixes = splitNonEmpty(suffixesRaw, true) // allow "" entries through deliberately
 	opts.Separators = splitNonEmpty(separatorsRaw, true)
