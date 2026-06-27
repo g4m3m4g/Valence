@@ -46,6 +46,16 @@ type Options struct {
 	// This models the common habit of swapping letters to satisfy "complexity"
 	// requirements: "j0hn", "j@ne", "p@$$w0rd", etc.
 	IncludeLeet bool
+
+	// Prefixes are prepended to each mutated token (and then combined with
+	// every suffix) when IncludePrefixes is true. Models the habit of leading
+	// with a symbol or digit run to satisfy site complexity requirements:
+	// "!john", "123john", "!john123", etc.
+	Prefixes []string
+
+	// IncludePrefixes enables prefix prepending. When true, each variant cv
+	// produces: cv, cv+suffix, prefix+cv, and prefix+cv+suffix.
+	IncludePrefixes bool
 }
 
 // DefaultOptions returns a reasonable, common-habit-driven default
@@ -70,9 +80,13 @@ func DefaultOptions() Options {
 		Separators:    []string{"", "_", ".", "-"},
 		MinLength:     4,
 		MaxLength:     32,
+		Prefixes: []string{
+			"!", "1", "12", "123", "0", "@",
+		},
 		IncludePairs:      true,
 		IncludeToggleCase: true,
 		IncludeLeet:       true,
+		IncludePrefixes:   true,
 		MaxCandidates:     0,
 	}
 }
@@ -84,12 +98,14 @@ func DefaultOptions() Options {
 // Pipeline overview:
 //  1. Extract every non-empty token from the profile (names, nickname,
 //     birth-date derivatives, etc.).
-//  2. For each token, generate case variants, then append the configured
-//     suffixes to each variant.
-//  3. If IncludePairs is enabled, combine every distinct pair of tokens
+//  2. For each token, build all variants: case (lower/upper/title), optional
+//     per-character toggle case, optional leet-speak substitutions.
+//  3. For each variant cv, emit: cv, cv+suffix, prefix+cv, prefix+cv+suffix
+//     (prefix and prefix+suffix steps gated by IncludePrefixes).
+//  4. If IncludePairs is enabled, combine every distinct pair of tokens
 //     using the configured separators, then apply case variants and
 //     suffixes to each combination as well.
-//  4. Deduplicate via a set, filter by length, sort for deterministic
+//  5. Deduplicate via a set, filter by length, sort for deterministic
 //     output, and optionally truncate to MaxCandidates.
 func Generate(p Profile, opts Options) []string {
 	candidates := make(map[string]struct{})
@@ -114,7 +130,11 @@ func Generate(p Profile, opts Options) []string {
 			}
 		}
 
-		// Deduplicate across all variant sources before suffix expansion.
+		// Deduplicate across all variant sources, then emit all combinations:
+		//   cv                   — bare token
+		//   cv + suffix          — __suffix
+		//   prefix + cv          — prefix__
+		//   prefix + cv + suffix — prefix__suffix
 		seen := make(map[string]struct{}, len(variants))
 		for _, cv := range variants {
 			if _, dup := seen[cv]; dup {
@@ -122,8 +142,16 @@ func Generate(p Profile, opts Options) []string {
 			}
 			seen[cv] = struct{}{}
 			addFiltered(candidates, cv, opts)
-			for _, withSuffix := range AppendSuffixes(cv, opts.Suffixes) {
-				addFiltered(candidates, withSuffix, opts)
+			for _, ws := range AppendSuffixes(cv, opts.Suffixes) {
+				addFiltered(candidates, ws, opts)
+			}
+			if opts.IncludePrefixes {
+				for _, wp := range PrependPrefixes(cv, opts.Prefixes) {
+					addFiltered(candidates, wp, opts)
+					for _, wps := range AppendSuffixes(wp, opts.Suffixes) {
+						addFiltered(candidates, wps, opts)
+					}
+				}
 			}
 		}
 	}

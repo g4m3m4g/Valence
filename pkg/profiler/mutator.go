@@ -168,6 +168,19 @@ func ToggleCaseVariants(s string) []string {
 	return out
 }
 
+// PrependPrefixes returns prefix+base for every prefix in prefixes. Mirrors
+// AppendSuffixes: an empty prefix entry reproduces the base value unchanged.
+func PrependPrefixes(base string, prefixes []string) []string {
+	if base == "" || len(prefixes) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(prefixes))
+	for _, pre := range prefixes {
+		out = append(out, pre+base)
+	}
+	return out
+}
+
 // Combine joins two non-empty strings using each separator in separators,
 // producing both orderings (a+sep+b and b+sep+a). This models the very
 // common habit of gluing together two pieces of personal significance, e.g.

@@ -5,6 +5,100 @@ import (
 	"testing"
 )
 
+func TestPrependPrefixes(t *testing.T) {
+	got := PrependPrefixes("john", []string{"!", "1", "123"})
+	want := []string{"!john", "1john", "123john"}
+	if len(got) != len(want) {
+		t.Fatalf("PrependPrefixes returned %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("PrependPrefixes[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+
+	if got := PrependPrefixes("", []string{"!"}); got != nil {
+		t.Errorf("PrependPrefixes with empty base should return nil, got %v", got)
+	}
+	if got := PrependPrefixes("john", nil); got != nil {
+		t.Errorf("PrependPrefixes with nil prefixes should return nil, got %v", got)
+	}
+}
+
+func TestGenerate_PrefixPatterns(t *testing.T) {
+	p := Profile{FirstName: "John"}
+	opts := DefaultOptions()
+	out := setOf(Generate(p, opts))
+
+	// prefix__ : "!john", "123john"
+	for _, want := range []string{"!john", "123john", "1john", "@john"} {
+		if !out[want] {
+			t.Errorf("expected prefix-only candidate %q", want)
+		}
+	}
+
+	// prefix__suffix : "!john123", "123john!"
+	for _, want := range []string{"!john123", "123john!", "1john!"} {
+		if !out[want] {
+			t.Errorf("expected prefix+suffix candidate %q", want)
+		}
+	}
+
+	// __suffix still present
+	for _, want := range []string{"john123", "john!"} {
+		if !out[want] {
+			t.Errorf("expected suffix-only candidate %q", want)
+		}
+	}
+}
+
+func TestGenerate_PrefixDisabled(t *testing.T) {
+	p := Profile{FirstName: "John"}
+	opts := DefaultOptions()
+	opts.IncludePrefixes = false
+	out := setOf(Generate(p, opts))
+
+	for _, unwanted := range []string{"!john", "123john", "1john"} {
+		if out[unwanted] {
+			t.Errorf("prefix candidate %q should not appear when IncludePrefixes=false", unwanted)
+		}
+	}
+	// suffix-only should still be present
+	if !out["john123"] {
+		t.Error("suffix-only candidate john123 should still appear when prefixes disabled")
+	}
+}
+
+func TestGenerate_CustomPrefixes(t *testing.T) {
+	p := Profile{FirstName: "Jane"}
+	opts := DefaultOptions()
+	opts.Prefixes = []string{"xx"}
+	out := setOf(Generate(p, opts))
+
+	if !out["xxjane"] {
+		t.Error("expected custom prefix candidate xxjane")
+	}
+	if !out["xxjane!"] {
+		t.Error("expected custom prefix+suffix candidate xxjane!")
+	}
+	// default prefix should not appear
+	if out["!jane"] {
+		t.Error("default prefix !jane should not appear when custom prefixes override it")
+	}
+}
+
+func TestGenerate_NoDuplicatesWithPrefixes(t *testing.T) {
+	p := Profile{FirstName: "John", LastName: "Smith"}
+	out := Generate(p, DefaultOptions())
+	seen := make(map[string]bool, len(out))
+	for _, w := range out {
+		if seen[w] {
+			t.Fatalf("duplicate candidate found: %q", w)
+		}
+		seen[w] = true
+	}
+}
+
 func TestLeetVariants(t *testing.T) {
 	t.Run("single substitution", func(t *testing.T) {
 		if !setOf(LeetVariants("john"))["j0hn"] {
