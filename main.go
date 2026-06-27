@@ -95,8 +95,23 @@ func run() error {
 		profile.BirthDate = bd
 	}
 
+	// No profile data supplied — enter interactive mode.
 	if len(profile.Tokens()) == 0 {
-		return fmt.Errorf("at least one profile field must be supplied; run with -h to see available flags")
+		var err error
+		profile, birthDateStr, err = promptProfile()
+		if err != nil {
+			return err
+		}
+		if birthDateStr != "" {
+			bd, err := profiler.ParseBirthDate(birthDateStr)
+			if err != nil {
+				return err
+			}
+			profile.BirthDate = bd
+		}
+		if len(profile.Tokens()) == 0 {
+			return fmt.Errorf("at least one profile field must be provided")
+		}
 	}
 
 	opts := defaults
@@ -146,6 +161,41 @@ func splitNonEmpty(raw string, keepEmpty bool) []string {
 		}
 	}
 	return out
+}
+
+// promptProfile interactively asks the user to fill in each profile field.
+// Returns the filled Profile, the raw birthdate string (for parsing), and any
+// read error. Fields left blank are silently skipped.
+func promptProfile() (profiler.Profile, string, error) {
+	sc := bufio.NewScanner(os.Stdin)
+
+	ask := func(label string) string {
+		fmt.Fprintf(os.Stderr, "  %-20s ", label+":")
+		if !sc.Scan() {
+			return ""
+		}
+		return strings.TrimSpace(sc.Text())
+	}
+
+	fmt.Fprintf(os.Stderr, "\nValence — interactive profile builder\n")
+	fmt.Fprintf(os.Stderr, "Leave any field blank to skip it.\n\n")
+
+	p := profiler.Profile{
+		FirstName:     ask("First name"),
+		LastName:      ask("Last name"),
+		Nickname:      ask("Nickname / alias"),
+		PartnerName:   ask("Partner's name"),
+		PetName:       ask("Pet's name"),
+		FavoriteThing: ask("Favorite (team/band/hobby)"),
+	}
+	birthdate := ask("Date of birth (YYYY-MM-DD)")
+
+	fmt.Fprintf(os.Stderr, "\n")
+
+	if err := sc.Err(); err != nil {
+		return profiler.Profile{}, "", fmt.Errorf("reading input: %w", err)
+	}
+	return p, birthdate, nil
 }
 
 // writeOutput streams one candidate per line to either the given file path
