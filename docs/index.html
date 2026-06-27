@@ -3,8 +3,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Valence — Targeted Wordlist Generator</title>
-  <meta name="description" content="Valence turns a personal profile into a deduplicated wordlist in seconds. Built for authorized security audits." />
+  <title>Valence — Targeted Wordlist Generator for Penetration Testing</title>
+  <meta name="description" content="Valence generates targeted wordlists from personal profiles — names, dates, pets, hobbies — using leet-speak, case mutations, and pairwise combinations. Free, open-source CLI tool for authorized pentests and security audits." />
+  <meta name="keywords" content="wordlist generator, targeted wordlist, password profiling, pentest tool, hashcat wordlist, OSINT password tool, custom wordlist, cupp alternative, security wordlist generator, password cracking wordlist, go security tool" />
+  <meta name="author" content="g4m3m4g" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://g4m3m4g.github.io/Valence/" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://g4m3m4g.github.io/Valence/" />
+  <meta property="og:title" content="Valence — Targeted Wordlist Generator for Penetration Testing" />
+  <meta property="og:description" content="Generate targeted wordlists from personal profiles in seconds. Leet-speak mutations, case variants, date/phone derivation, pairwise combinations. Free and open-source." />
+  <meta property="og:image" content="https://opengraph.githubassets.com/1/g4m3m4g/Valence" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Valence — Targeted Wordlist Generator" />
+  <meta name="twitter:description" content="Generate targeted wordlists from personal profiles. Free CLI tool for authorized pentests — leet-speak, case mutations, pairwise combos, and more." />
+  <meta name="twitter:image" content="https://opengraph.githubassets.com/1/g4m3m4g/Valence" />
+
+  <!-- Structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Valence",
+    "description": "Targeted wordlist generator and password-profiling tool for authorized security audits and penetration tests.",
+    "url": "https://g4m3m4g.github.io/Valence/",
+    "downloadUrl": "https://github.com/g4m3m4g/Valence/releases",
+    "installUrl": "https://github.com/g4m3m4g/Valence",
+    "applicationCategory": "SecurityApplication",
+    "operatingSystem": "Linux, macOS, Windows",
+    "programmingLanguage": "Go",
+    "license": "https://github.com/g4m3m4g/Valence/blob/main/LICENSE",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Person", "name": "g4m3m4g", "url": "https://github.com/g4m3m4g" },
+    "softwareVersion": "latest",
+    "keywords": "wordlist generator, password profiling, penetration testing, hashcat, OSINT"
+  }
+  </script>
   <style>
     /* ── TOKENS ── */
     :root {
@@ -544,11 +582,11 @@
         <button class="copy-btn" onclick="copyInstall()">copy</button>
       </div>
       <div class="hero-links">
-        <a class="btn-gh" href="https://github.com/g4m3m4g/Valence">
+        <a class="btn-gh" href="https://github.com/g4m3m4g/Valence" rel="noopener noreferrer" target="_blank">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/></svg>
-          View on GitHub
+          Star on GitHub
         </a>
-        <a href="https://github.com/g4m3m4g/Valence/releases">Releases ↗</a>
+        <a href="https://github.com/g4m3m4g/Valence/releases" rel="noopener noreferrer" target="_blank">Releases ↗</a>
       </div>
     </div>
   </div>
@@ -573,8 +611,10 @@
   <div class="section-label">What it does</div>
   <h2>Eight mutation layers.<br>One deduplicated wordlist.</h2>
   <p class="section-sub">
-    Valence doesn't guess — it applies the same shortcuts real people use when
-    creating passwords, systematically, across every field you provide.
+    Valence is a free, open-source wordlist generator for penetration testers and security researchers.
+    Unlike generic wordlists, it builds targeted password candidates from a personal profile —
+    applying leet-speak substitutions, case mutations, date derivations, and pairwise combinations
+    the same way a real person would. Pipe the output directly into Hashcat, John the Ripper, or any password auditing tool.
   </p>
   <div class="features-grid">
     <div class="feat">
