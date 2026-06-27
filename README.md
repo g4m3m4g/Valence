@@ -1,3 +1,7 @@
+<div align="center">
+  <img width="1280" height="640" alt="Valence" src="https://github.com/user-attachments/assets/e2a18c7f-c006-4581-92db-a61fb7c731d0" />
+</div>
+
 # Valence
 
 > **Valence** (/ˈveɪ.ləns/) is inspired by the chemistry concept of the ability of atoms to bond and form new structures.
