@@ -99,8 +99,9 @@ func run() error {
 
 	// No profile data supplied — enter interactive mode.
 	if len(profile.Tokens()) == 0 {
+		var interactiveOutput string
 		var err error
-		profile, birthDateStr, err = promptProfile()
+		profile, birthDateStr, interactiveOutput, err = promptProfile()
 		if err != nil {
 			return err
 		}
@@ -113,6 +114,10 @@ func run() error {
 		}
 		if len(profile.Tokens()) == 0 {
 			return fmt.Errorf("at least one profile field must be provided")
+		}
+		// Only use the prompted output path if -o was not explicitly passed.
+		if outputPath == "" {
+			outputPath = interactiveOutput
 		}
 	}
 
@@ -166,10 +171,12 @@ func splitNonEmpty(raw string, keepEmpty bool) []string {
 	return out
 }
 
-// promptProfile interactively asks the user to fill in each profile field.
-// Returns the filled Profile, the raw birthdate string (for parsing), and any
-// read error. Fields left blank are silently skipped.
-func promptProfile() (profiler.Profile, string, error) {
+// promptProfile interactively asks the user to fill in each profile field and
+// choose an output filename. Returns the filled Profile, the raw birthdate
+// string (for parsing), the chosen output path, and any read error.
+// Fields left blank are silently skipped; the output filename falls back to a
+// computed default when left blank.
+func promptProfile() (profiler.Profile, string, string, error) {
 	sc := bufio.NewScanner(os.Stdin)
 
 	ask := func(label string) string {
@@ -193,12 +200,40 @@ func promptProfile() (profiler.Profile, string, error) {
 	}
 	birthdate := ask("Date of birth (YYYY-MM-DD)")
 
+	// Build the default output filename from whatever names we have.
+	defaultOut := outputDefault(p.FirstName, p.LastName)
+	fmt.Fprintf(os.Stderr, "\n  %-20s ", fmt.Sprintf("Output file [%s]:", defaultOut))
+	var outPath string
+	if sc.Scan() {
+		outPath = strings.TrimSpace(sc.Text())
+	}
+	if outPath == "" {
+		outPath = defaultOut
+	}
+
 	fmt.Fprintf(os.Stderr, "\n")
 
 	if err := sc.Err(); err != nil {
-		return profiler.Profile{}, "", fmt.Errorf("reading input: %w", err)
+		return profiler.Profile{}, "", "", fmt.Errorf("reading input: %w", err)
 	}
-	return p, birthdate, nil
+	return p, birthdate, outPath, nil
+}
+
+// outputDefault returns a sensible default output filename derived from the
+// supplied name parts. Falls back to "output.txt" when both are blank.
+func outputDefault(firstName, lastName string) string {
+	fn := strings.ToLower(strings.TrimSpace(firstName))
+	ln := strings.ToLower(strings.TrimSpace(lastName))
+	switch {
+	case fn != "" && ln != "":
+		return fn + "_" + ln + ".txt"
+	case fn != "":
+		return fn + ".txt"
+	case ln != "":
+		return ln + ".txt"
+	default:
+		return "output.txt"
+	}
 }
 
 // writeOutput streams one candidate per line to either the given file path
