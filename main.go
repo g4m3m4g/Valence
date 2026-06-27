@@ -30,13 +30,18 @@ func main() {
 
 func run() error {
 	var (
-		firstName     string
-		lastName      string
-		nickname      string
-		birthDateStr  string
-		partnerName   string
-		petName       string
-		favoriteThing string
+		firstName      string
+		lastName       string
+		nickname       string
+		birthDateStr   string
+		partnerName    string
+		petName        string
+		favoriteThing  string
+		phoneNumber    string
+		city           string
+		username       string
+		childName      string
+		favoriteNumber string
 		outputPath    string
 		minLen        int
 		maxLen        int
@@ -60,6 +65,11 @@ func run() error {
 	flag.StringVar(&partnerName, "partner", "", "Name of target's partner/spouse")
 	flag.StringVar(&petName, "pet", "", "Name of target's pet")
 	flag.StringVar(&favoriteThing, "favorite", "", "Target's favorite team, hobby, or band")
+	flag.StringVar(&phoneNumber, "phone", "", "Target's phone number (non-digits are stripped automatically)")
+	flag.StringVar(&city, "city", "", "Target's hometown or city")
+	flag.StringVar(&username, "username", "", "Target's social media handle or gaming alias")
+	flag.StringVar(&childName, "child", "", "Name of target's child or sibling")
+	flag.StringVar(&favoriteNumber, "number", "", "Target's favorite/lucky number or jersey number")
 
 	// Both -o and -output write to the same variable; either spelling works.
 	flag.StringVar(&outputPath, "o", "", "Output file path (default: stdout)")
@@ -91,12 +101,17 @@ func run() error {
 	flag.Parse()
 
 	profile := profiler.Profile{
-		FirstName:     firstName,
-		LastName:      lastName,
-		Nickname:      nickname,
-		PartnerName:   partnerName,
-		PetName:       petName,
-		FavoriteThing: favoriteThing,
+		FirstName:      firstName,
+		LastName:       lastName,
+		Nickname:       nickname,
+		PartnerName:    partnerName,
+		PetName:        petName,
+		FavoriteThing:  favoriteThing,
+		PhoneNumber:    phoneNumber,
+		City:           city,
+		Username:       username,
+		ChildName:      childName,
+		FavoriteNumber: favoriteNumber,
 	}
 
 	if birthDateStr != "" {
@@ -205,12 +220,17 @@ func promptProfile() (profiler.Profile, string, string, error) {
 	fmt.Fprintf(os.Stderr, "Leave any field blank to skip it.\n\n")
 
 	p := profiler.Profile{
-		FirstName:     ask("First name"),
-		LastName:      ask("Last name"),
-		Nickname:      ask("Nickname / alias"),
-		PartnerName:   ask("Partner's name"),
-		PetName:       ask("Pet's name"),
-		FavoriteThing: ask("Favorite (team/band/hobby)"),
+		FirstName:      ask("First name"),
+		LastName:       ask("Last name"),
+		Nickname:       ask("Nickname / alias"),
+		PartnerName:    ask("Partner's name"),
+		PetName:        ask("Pet's name"),
+		ChildName:      ask("Child's name"),
+		FavoriteThing:  ask("Favorite (team/band/hobby)"),
+		FavoriteNumber: ask("Favorite / lucky number"),
+		City:           ask("Hometown / city"),
+		Username:       ask("Username / handle"),
+		PhoneNumber:    ask("Phone number"),
 	}
 	birthdate := ask("Date of birth (YYYY-MM-DD)")
 

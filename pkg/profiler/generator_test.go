@@ -5,6 +5,98 @@ import (
 	"testing"
 )
 
+func TestExtractDigits(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"(555) 123-4567", "5551234567"},
+		{"555.123.4567", "5551234567"},
+		{"+1-800-555-0199", "18005550199"},
+		{"no digits here", ""},
+		{"1234", "1234"},
+	}
+	for _, c := range cases {
+		if got := extractDigits(c.in); got != c.want {
+			t.Errorf("extractDigits(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+func TestPhoneTokens(t *testing.T) {
+	p := Profile{PhoneNumber: "(555) 123-4567"}
+	vals := tokenValues(p.Tokens())
+
+	for label, want := range map[string]bool{
+		"5551234567": true, // PhoneFull
+		"4567":       true, // PhoneLast4
+		"234567":     true, // PhoneLast6
+		"555":        true, // PhoneAreaCode
+		"123":        true, // PhoneExchange
+	} {
+		if vals[label] != want {
+			t.Errorf("phone token %q: got %v, want %v", label, vals[label], want)
+		}
+	}
+}
+
+func TestPhoneTokens_Short(t *testing.T) {
+	// Only 4 digits — only full and last4 should be derived (same value).
+	p := Profile{PhoneNumber: "4567"}
+	vals := tokenValues(p.Tokens())
+	if !vals["4567"] {
+		t.Error("expected PhoneFull/PhoneLast4 token 4567")
+	}
+	if vals["234567"] {
+		t.Error("PhoneLast6 should not appear for a 4-digit number")
+	}
+}
+
+func TestPhoneTokens_TooShort(t *testing.T) {
+	// Fewer than 4 digits — no tokens should be added.
+	p := Profile{PhoneNumber: "123"}
+	for _, tok := range p.Tokens() {
+		if tok.Label == "PhoneFull" || tok.Label == "PhoneLast4" {
+			t.Errorf("unexpected phone token for <4 digit input: %+v", tok)
+		}
+	}
+}
+
+func TestNewProfileFields_Tokens(t *testing.T) {
+	p := Profile{
+		City:           "Bangkok",
+		Username:       "j0hn_g4mer",
+		ChildName:      "Emma",
+		FavoriteNumber: "7",
+	}
+	vals := tokenValues(p.Tokens())
+
+	for _, want := range []string{"Bangkok", "j0hn_g4mer", "Emma", "7"} {
+		if !vals[want] {
+			t.Errorf("expected token %q for new profile field", want)
+		}
+	}
+}
+
+func TestNewProfileFields_ReversedInOutput(t *testing.T) {
+	p := Profile{City: "Paris", Username: "gamer", ChildName: "Emma"}
+	vals := tokenValues(p.Tokens())
+
+	for _, want := range []string{"sirap", "remag", "amme"} {
+		if !vals[want] {
+			t.Errorf("expected reversed token %q", want)
+		}
+	}
+}
+
+func TestGenerate_PhoneInOutput(t *testing.T) {
+	p := Profile{FirstName: "John", PhoneNumber: "(555) 123-4567"}
+	out := setOf(Generate(p, DefaultOptions()))
+
+	for _, want := range []string{"john4567", "4567john", "john5551234567"} {
+		if !out[want] {
+			t.Errorf("expected phone-derived candidate %q", want)
+		}
+	}
+}
+
 func TestGenerate_CommonWordMixing(t *testing.T) {
 	p := Profile{FirstName: "John", LastName: "Smith"}
 	opts := DefaultOptions()

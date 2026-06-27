@@ -70,13 +70,18 @@ func (b BirthDate) Tokens() []Token {
 // audit/pentest target. All fields are optional; empty fields are simply
 // excluded from the generation process.
 type Profile struct {
-	FirstName     string
-	LastName      string
-	Nickname      string
-	BirthDate     BirthDate
-	PartnerName   string
-	PetName       string
-	FavoriteThing string // e.g. sports team, hobby, band
+	FirstName      string
+	LastName       string
+	Nickname       string
+	BirthDate      BirthDate
+	PartnerName    string
+	PetName        string
+	FavoriteThing  string // e.g. sports team, hobby, band
+	PhoneNumber    string // raw; digits are extracted automatically
+	City           string // hometown or current city
+	Username       string // social media handle, gaming alias, etc.
+	ChildName      string // name of child or sibling
+	FavoriteNumber string // jersey number, lucky number, PIN seed
 }
 
 // Tokens flattens every non-empty field of the Profile (including any
@@ -98,6 +103,23 @@ func (p Profile) Tokens() []Token {
 	add("PartnerName", p.PartnerName)
 	add("PetName", p.PetName)
 	add("FavoriteThing", p.FavoriteThing)
+	add("City", p.City)
+	add("Username", p.Username)
+	add("ChildName", p.ChildName)
+	add("FavoriteNumber", p.FavoriteNumber)
+
+	// Derived: phone number digit sequences people embed in passwords.
+	if digits := extractDigits(p.PhoneNumber); len(digits) >= 4 {
+		add("PhoneFull", digits)
+		add("PhoneLast4", digits[len(digits)-4:])
+		if len(digits) >= 6 {
+			add("PhoneLast6", digits[len(digits)-6:])
+			add("PhoneAreaCode", digits[:3])
+		}
+		if len(digits) >= 10 {
+			add("PhoneExchange", digits[3:6])
+		}
+	}
 
 	// Derived: initial-based combinations people use to shorten their name.
 	fn := strings.TrimSpace(p.FirstName)
@@ -105,7 +127,7 @@ func (p Profile) Tokens() []Token {
 	if fn != "" && ln != "" {
 		fnR := []rune(fn)
 		lnR := []rune(ln)
-		add("InitialLastName", strings.ToUpper(string(fnR[:1]))+ln)   // JSmith
+		add("InitialLastName", strings.ToUpper(string(fnR[:1]))+ln)  // JSmith
 		add("FirstNameInitial", fn+strings.ToUpper(string(lnR[:1]))) // JohnS
 	}
 
@@ -116,6 +138,9 @@ func (p Profile) Tokens() []Token {
 		{"NicknameRev", p.Nickname},
 		{"PetNameRev", p.PetName},
 		{"PartnerNameRev", p.PartnerName},
+		{"CityRev", p.City},
+		{"UsernameRev", p.Username},
+		{"ChildNameRev", p.ChildName},
 	} {
 		trimmed := strings.TrimSpace(pair.value)
 		if trimmed == "" {
@@ -131,6 +156,18 @@ func (p Profile) Tokens() []Token {
 	tokens = append(tokens, p.BirthDate.Tokens()...)
 
 	return tokens
+}
+
+// extractDigits strips all non-digit characters from s and returns the
+// remaining digit string, e.g. "(555) 123-4567" → "5551234567".
+func extractDigits(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if r >= '0' && r <= '9' {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 func reverseString(s string) string {
