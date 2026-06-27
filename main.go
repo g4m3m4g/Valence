@@ -159,13 +159,17 @@ func run() error {
 	opts.Suffixes = splitNonEmpty(suffixesRaw, true) // allow "" entries through deliberately
 	opts.Separators = splitNonEmpty(separatorsRaw, true)
 
+	spin := startSpinner("Generating candidates…")
 	start := time.Now()
 	candidates := profiler.Generate(profile, opts)
 	elapsed := time.Since(start)
 
+	spin.SetMsg("Writing output…")
 	if err := writeOutput(candidates, outputPath); err != nil {
+		spin.Stop()
 		return fmt.Errorf("writing output: %w", err)
 	}
+	spin.Stop()
 
 	// Execution metadata always goes to stderr so stdout stays clean for piping.
 	fmt.Fprintf(os.Stderr, "Generated %d unique permutations in %s\n", len(candidates), elapsed)
