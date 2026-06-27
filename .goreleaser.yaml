@@ -1,0 +1,71 @@
+version: 2
+
+project_name: valence
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    main: .
+    binary: valence
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+
+archives:
+  - formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+      - "Merge pull request"
+      - "Merge branch"
+
+release:
+  github:
+    owner: g4m3m4g
+    name: Valence
+  name_template: "v{{ .Version }}"
+
+brews:
+  - name: valence
+    repository:
+      owner: g4m3m4g
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/g4m3m4g/Valence"
+    description: "Targeted wordlist generator for authorized security audits and pentests"
+    license: "MIT"
+    install: |
+      bin.install "valence"
+    test: |
+      system "#{bin}/valence", "--help"
