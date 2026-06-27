@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Valence — Targeted Wordlist Generator</title>
+  <meta name="description" content="Valence turns a personal profile into a deduplicated wordlist in seconds. Built for authorized security audits." />
+  <style>
+    /* ── TOKENS ── */
+    :root {
+      --bg:        #0b0d14;
+      --surface:   #111520;
+      --surface2:  #161929;
+      --border:    #1d2035;
+      --border2:   #252840;
+      --amber:     #20e18b;
+      --amber-dim: rgba(32,225,139,.1);
+      --amber-glow:rgba(32,225,139,.06);
+      --green:     #5ef0a8;
+      --text:      #dde3f0;
+      --sub:       #8891ae;
+      --dim:       #4a5170;
+      --code:      #c8d0e4;
+      --radius:    7px;
+      --mono:      'Cascadia Code','JetBrains Mono','Fira Code',ui-monospace,monospace;
+      --sans:      -apple-system,'Segoe UI',system-ui,sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.7 var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    code {
+      font-family: var(--mono);
+      font-size: .82em;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .1em .35em;
+      color: var(--code);
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(11,13,20,.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+    .nav-logo {
+      font-family: var(--mono);
+      font-size: .95rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -.01em;
+    }
+    .nav-logo em { color: var(--amber); font-style: normal; }
+    .nav-links {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+      margin-left: auto;
+      font-size: .82rem;
+      color: var(--sub);
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-gh {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .35rem .85rem;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      font-size: .8rem;
+      color: var(--sub);
+      transition: border-color .15s, color .15s;
+    }
+    .nav-gh:hover { border-color: var(--border2); color: var(--text); }
+
+    /* ── HERO ── */
+    .hero-wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 5rem 2rem 4rem;
+      display: grid;
+      grid-template-columns: 1fr 1.08fr;
+      gap: 4rem;
+      align-items: center;
+    }
+
+    .hero-eyebrow {
+      font-family: var(--mono);
+      font-size: .72rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--amber);
+      margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      font-size: clamp(2.6rem, 5vw, 4rem);
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -.03em;
+      color: #fff;
+      margin-bottom: 1.25rem;
+    }
+    h1 .break { display: block; }
+
+    .hero-sub {
+      font-size: 1rem;
+      color: var(--sub);
+      line-height: 1.65;
+      margin-bottom: 2.25rem;
+      max-width: 400px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+    }
+
+    .install-bar {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: .75rem 1rem;
+      font-family: var(--mono);
+      font-size: .85rem;
+      color: #fff;
+      max-width: 380px;
+    }
+    .install-bar .ps { color: var(--amber); user-select: none; }
+    .copy-btn {
+      margin-left: auto;
+      background: none;
+      border: 1px solid var(--border2);
+      border-radius: 5px;
+      padding: .2rem .6rem;
+      font-size: .72rem;
+      font-family: var(--mono);
+      color: var(--dim);
+      cursor: pointer;
+      transition: color .15s, border-color .15s;
+      flex-shrink: 0;
+    }
+    .copy-btn:hover { color: var(--sub); border-color: var(--sub); }
+
+    .hero-links {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      font-size: .82rem;
+    }
+    .btn-gh {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      padding: .5rem 1.1rem;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      color: var(--sub);
+      font-size: .82rem;
+      transition: border-color .15s, color .15s;
+    }
+    .btn-gh:hover { color: var(--text); border-color: #3a3e58; }
+    .hero-links a { color: var(--sub); }
+    .hero-links a:hover { color: var(--text); }
+
+    /* ── TERMINAL ── */
+    .terminal {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,.5), 0 0 0 1px var(--border);
+    }
+    .term-bar {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .7rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,.02);
+    }
+    .term-dot {
+      width: 11px; height: 11px;
+      border-radius: 50%;
+    }
+    .term-dot:nth-child(1) { background: #e05c5c; }
+    .term-dot:nth-child(2) { background: #f0b429; }
+    .term-dot:nth-child(3) { background: #3ecf8e; }
+    .term-title {
+      margin-left: auto;
+      font-family: var(--mono);
+      font-size: .72rem;
+      color: var(--dim);
+      margin-right: auto;
+      padding-right: 42px;
+    }
+    .term-body {
+      padding: 1.1rem 1.25rem 1.25rem;
+      font-family: var(--mono);
+      font-size: .8rem;
+      line-height: 1.75;
+      min-height: 280px;
+    }
+    .term-prompt { color: var(--amber); }
+    .term-cmd    { color: #fff; }
+    .term-flag   { color: #8ab4f8; }
+    .term-val    { color: #c3a47e; }
+    .term-meta   { color: var(--dim); }
+    .term-count  { color: var(--green); }
+    .term-output { color: var(--sub); }
+    .term-cursor {
+      display: inline-block;
+      width: 8px; height: 1em;
+      background: var(--amber);
+      vertical-align: text-bottom;
+      animation: blink .9s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ── SECTION COMMON ── */
+    .section {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 5rem 2rem;
+      border-top: 1px solid var(--border);
+    }
+    .section-label {
+      font-family: var(--mono);
+      font-size: .7rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--amber);
+      margin-bottom: 1rem;
+    }
+    h2 {
+      font-size: 1.9rem;
+      font-weight: 800;
+      letter-spacing: -.025em;
+      color: #fff;
+      margin-bottom: .6rem;
+    }
+    .section-sub {
+      font-size: .9rem;
+      color: var(--sub);
+      max-width: 560px;
+      margin-bottom: 2.5rem;
+    }
+
+    /* ── FEATURES ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .feat {
+      background: var(--bg);
+      padding: 1.75rem;
+      transition: background .2s;
+    }
+    .feat:hover { background: var(--surface); }
+    .feat-num {
+      font-family: var(--mono);
+      font-size: .7rem;
+      color: var(--amber);
+      margin-bottom: .6rem;
+      letter-spacing: .08em;
+    }
+    .feat h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: .4rem;
+      letter-spacing: -.01em;
+    }
+    .feat p {
+      font-size: .84rem;
+      color: var(--sub);
+      line-height: 1.6;
+    }
+
+    /* ── INSTALL ── */
+    .install-section { max-width: 860px; }
+    .methods { display: grid; gap: 2rem; }
+    .method-head {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      margin-bottom: .6rem;
+    }
+    .method-name {
+      font-size: .75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--sub);
+    }
+    .method-badge {
+      font-family: var(--mono);
+      font-size: .67rem;
+      color: var(--amber);
+      background: var(--amber-dim);
+      border: 1px solid rgba(32,225,139,.2);
+      border-radius: 99px;
+      padding: .1rem .5rem;
+    }
+
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .9rem 1.1rem;
+      font-family: var(--mono);
+      font-size: .8rem;
+      line-height: 1.8;
+      overflow-x: auto;
+      color: var(--code);
+    }
+    pre .ps  { color: var(--dim); user-select: none; }
+    pre .cmd { color: #fff; }
+    pre .fl  { color: #8ab4f8; }
+    pre .sv  { color: #c3a47e; }
+    pre .cm  { color: var(--dim); }
+    pre .pi  { color: var(--amber); }
+
+    .method-note {
+      font-size: .82rem;
+      color: var(--dim);
+      margin-top: .5rem;
+    }
+
+    /* ── USAGE ── */
+    .usage-section { max-width: 860px; }
+    .usage-grid { display: grid; gap: 2rem; }
+    .usage-block h3 {
+      font-size: .875rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: .6rem;
+      letter-spacing: -.01em;
+    }
+    .usage-note {
+      font-size: .82rem;
+      color: var(--dim);
+      margin-top: .5rem;
+    }
+
+    /* ── FLAGS ── */
+    .flag-groups { display: grid; gap: 2rem; }
+    .flag-group-label {
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--dim);
+      margin-bottom: .75rem;
+    }
+    .flag-list { display: grid; gap: 0; }
+    .flag-row {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 1.5rem;
+      padding: .5rem 0;
+      border-bottom: 1px solid var(--border);
+      align-items: baseline;
+    }
+    .flag-row:last-child { border-bottom: none; }
+    .flag-key {
+      font-family: var(--mono);
+      font-size: .78rem;
+      color: #8ab4f8;
+    }
+    .flag-desc {
+      font-size: .84rem;
+      color: var(--sub);
+    }
+
+    /* ── PIPELINE ── */
+    .pipeline-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: .4rem;
+      margin: 1.5rem 0 2rem;
+    }
+    .pipe-step {
+      font-family: var(--mono);
+      font-size: .78rem;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 5px;
+      padding: .3rem .7rem;
+    }
+    .pipe-arrow { color: var(--border2); font-size: .8rem; }
+
+    .pipe-details { display: grid; gap: 1.25rem; }
+    .pipe-item {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 1.5rem;
+      font-size: .875rem;
+      align-items: baseline;
+    }
+    .pipe-stage {
+      font-family: var(--mono);
+      font-size: .78rem;
+      color: var(--amber);
+    }
+    .pipe-desc { color: var(--sub); line-height: 1.6; }
+
+    /* ── WARNING ── */
+    .warn-box {
+      display: flex;
+      gap: 1rem;
+      background: rgba(224,92,92,.06);
+      border: 1px solid rgba(224,92,92,.2);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.25rem;
+      font-size: .85rem;
+      color: var(--sub);
+      max-width: 680px;
+    }
+    .warn-box strong { color: #e27474; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 2rem;
+    }
+    .footer-wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .footer-logo {
+      font-family: var(--mono);
+      font-size: .85rem;
+      color: var(--dim);
+    }
+    .footer-logo em { color: var(--amber); font-style: normal; }
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+      font-size: .82rem;
+      color: var(--dim);
+    }
+    .footer-links a:hover { color: var(--sub); }
+    .footer-note {
+      font-size: .78rem;
+      color: var(--dim);
+      width: 100%;
+      margin-top: .25rem;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 800px) {
+      .hero-wrap {
+        grid-template-columns: 1fr;
+        padding: 3rem 1.5rem;
+        gap: 2.5rem;
+      }
+      h1 { font-size: 2.4rem; }
+      .hero-sub { max-width: none; }
+      .install-bar { max-width: none; }
+      .nav-links { display: none; }
+      .section { padding: 3.5rem 1.5rem; }
+      .pipe-item { grid-template-columns: 100px 1fr; }
+      .flag-row  { grid-template-columns: 110px 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .term-cursor { animation: none; opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-wrap">
+    <span class="nav-logo">val<em>ence</em></span>
+    <ul class="nav-links">
+      <li><a href="#install">Install</a></li>
+      <li><a href="#usage">Usage</a></li>
+      <li><a href="#how-it-works">How it works</a></li>
+    </ul>
+    <a class="nav-gh" href="https://github.com/g4m3m4g/Valence">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/></svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero-wrap">
+  <div class="hero-left">
+    <div class="hero-eyebrow">CLI · Security Tooling · Go</div>
+    <h1>
+      <span class="break">Build wordlists</span>
+      <span class="break">from people,</span>
+      <span class="break">not guesses.</span>
+    </h1>
+    <p class="hero-sub">
+      Feed Valence a personal profile — names, dates, pets, hobbies — and get a
+      deduplicated wordlist that mirrors how real people create passwords.
+      Built for authorized audits and contracted pentests.
+    </p>
+    <div class="hero-actions">
+      <div class="install-bar">
+        <span class="ps">$</span>
+        <span id="hero-cmd">brew install valence</span>
+        <button class="copy-btn" onclick="copyInstall()">copy</button>
+      </div>
+      <div class="hero-links">
+        <a class="btn-gh" href="https://github.com/g4m3m4g/Valence">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/></svg>
+          View on GitHub
+        </a>
+        <a href="https://github.com/g4m3m4g/Valence/releases">Releases ↗</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="terminal">
+      <div class="term-bar">
+        <span class="term-dot"></span>
+        <span class="term-dot"></span>
+        <span class="term-dot"></span>
+        <span class="term-title">valence</span>
+      </div>
+      <div class="term-body" id="term-body">
+        <span class="term-prompt">$ </span><span id="term-line" class="term-cmd"></span><span class="term-cursor" id="cursor"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <div class="section-label">What it does</div>
+  <h2>Eight mutation layers.<br>One deduplicated wordlist.</h2>
+  <p class="section-sub">
+    Valence doesn't guess — it applies the same shortcuts real people use when
+    creating passwords, systematically, across every field you provide.
+  </p>
+  <div class="features-grid">
+    <div class="feat">
+      <div class="feat-num">01</div>
+      <h3>Case + Leet</h3>
+      <p>All 2ⁿ per-character toggle combinations. 1–3 rule leet substitutions: <code>a→@/4</code>, <code>e→3</code>, <code>i→1/!</code>, <code>o→0</code>, <code>s→$/5</code>.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-num">02</div>
+      <h3>Prefix &amp; Suffix</h3>
+      <p>Every token gets bare, suffixed, prefixed, and wrapped forms — <code>!john</code>, <code>john123</code>, <code>!john123</code> — across the full mutation set.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-num">03</div>
+      <h3>Date &amp; Phone Derivation</h3>
+      <p>Birthdates expand to <code>YYYY</code>, <code>YY</code>, <code>DDMM</code>, <code>MMDD</code>. Phone numbers yield last-4, last-6, area code, and full digits.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-num">04</div>
+      <h3>Pairwise Combination</h3>
+      <p>Every token pair joined with each separator in both orderings — <code>john_smith</code>, <code>smith_john</code>, <code>john.smith</code> — then mutated and suffixed.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-num">05</div>
+      <h3>Common-Word Mixing</h3>
+      <p>Profile tokens paired with real breach-corpus words: <code>johnlove</code>, <code>dragonsmith</code>, <code>ilovejohn</code>. Words never pair with each other.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-num">06</div>
+      <h3>Reversals &amp; Initials</h3>
+      <p>Reversed spellings (<code>nhoj</code>, <code>htims</code>) and initials combos (<code>JSmith</code>, <code>JohnS</code>) derived automatically from name fields.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-num">07</div>
+      <h3>Zero Dependencies</h3>
+      <p>Pure Go standard library. No <code>go get</code>, no supply-chain risk. Auditable, embeddable, cross-compiles to any platform.</p>
+    </div>
+    <div class="feat">
+      <div class="feat-num">08</div>
+      <h3>Pipeline Native</h3>
+      <p>Candidates to <code>stdout</code>, metadata to <code>stderr</code>. Pipes directly into <code>hashcat</code>, <code>sort</code>, <code>uniq</code>. Importable as a Go library.</p>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section class="section install-section" id="install">
+  <div class="section-label">Installation</div>
+  <h2>Pick your method.</h2>
+  <p class="section-sub">All four produce the same binary. No runtime required.</p>
+
+  <div class="methods">
+    <div>
+      <div class="method-head">
+        <span class="method-name">Homebrew</span>
+        <span class="method-badge">recommended</span>
+      </div>
+      <pre><span class="ps">$ </span><span class="cmd">brew tap</span> g4m3m4g/tap
+<span class="ps">$ </span><span class="cmd">brew install</span> valence</pre>
+      <p class="method-note">macOS and Linux. Kept up-to-date with <code>brew upgrade</code>.</p>
+    </div>
+
+    <div>
+      <div class="method-head">
+        <span class="method-name">curl</span>
+      </div>
+      <pre><span class="ps">$ </span><span class="cmd">curl</span> <span class="fl">-fsSL</span> https://raw.githubusercontent.com/g4m3m4g/Valence/main/scripts/install.sh <span class="pi">|</span> sh</pre>
+      <p class="method-note">Downloads the correct pre-built binary for your OS and architecture. Installs to <code>/usr/local/bin</code>.</p>
+    </div>
+
+    <div>
+      <div class="method-head">
+        <span class="method-name">Go install</span>
+      </div>
+      <pre><span class="ps">$ </span><span class="cmd">go install</span> github.com/g4m3m4g/valence@latest</pre>
+      <p class="method-note">Requires Go 1.22+. Binary lands in <code>$GOPATH/bin</code>.</p>
+    </div>
+
+    <div>
+      <div class="method-head">
+        <span class="method-name">Build from source</span>
+      </div>
+      <pre><span class="ps">$ </span><span class="cmd">git clone</span> https://github.com/g4m3m4g/Valence.git
+<span class="ps">$ </span><span class="cmd">cd</span> Valence
+<span class="ps">$ </span><span class="cmd">go build</span> <span class="fl">-o</span> valence .</pre>
+    </div>
+  </div>
+</section>
+
+<!-- USAGE -->
+<section class="section usage-section" id="usage">
+  <div class="section-label">Usage</div>
+  <h2>Three ways to run it.</h2>
+
+  <div class="usage-grid">
+    <div class="usage-block">
+      <h3>Interactive mode</h3>
+      <pre><span class="ps">$ </span><span class="cmd">valence</span>
+
+<span class="cm">Valence — interactive profile builder</span>
+<span class="cm">Leave any field blank to skip it.</span>
+
+  First name:                John
+  Last name:                 Smith
+  Pet's name:                Max
+  Date of birth (YYYY-MM-DD): 1990-05-15
+  Output file [john_smith.txt]:</pre>
+      <p class="usage-note">No flag memorization required. Valence walks you through each field.</p>
+    </div>
+
+    <div class="usage-block">
+      <h3>Flag mode</h3>
+      <pre><span class="ps">$ </span><span class="cmd">valence</span> <span class="fl">-first</span> John <span class="fl">-last</span> Smith <span class="fl">-nick</span> Johnny \
+        <span class="fl">-partner</span> Sarah <span class="fl">-pet</span> Max <span class="fl">-child</span> Emma \
+        <span class="fl">-phone</span> <span class="sv">"555-123-4567"</span> <span class="fl">-city</span> Bangkok \
+        <span class="fl">-username</span> j0hn <span class="fl">-birthdate</span> <span class="sv">1990-05-15</span> \
+        <span class="fl">-o</span> john_smith.txt</pre>
+    </div>
+
+    <div class="usage-block">
+      <h3>Pipe into other tools</h3>
+      <pre><span class="cm"># Pipe directly into Hashcat</span>
+<span class="ps">$ </span><span class="cmd">valence</span> <span class="fl">-first</span> John <span class="fl">-pet</span> Max <span class="pi">|</span> hashcat <span class="fl">-a</span> 0 <span class="fl">-m</span> 1000 hashes.txt
+
+<span class="cm"># Filter and sort</span>
+<span class="ps">$ </span><span class="cmd">valence</span> <span class="fl">-first</span> John <span class="fl">-birthdate</span> <span class="sv">1990-05-15</span> <span class="pi">|</span> sort -u > candidates.txt</pre>
+      <p class="usage-note">Candidates go to <code>stdout</code>. Metadata and errors go to <code>stderr</code> — the split is intentional.</p>
+    </div>
+  </div>
+
+  <!-- Flags -->
+  <div style="margin-top:3rem;">
+    <h3 style="font-size:1rem;font-weight:700;color:#fff;margin-bottom:1.5rem;letter-spacing:-.01em;">All flags</h3>
+    <div class="flag-groups">
+      <div>
+        <div class="flag-group-label">Profile</div>
+        <div class="flag-list">
+          <div class="flag-row"><span class="flag-key">-first</span><span class="flag-desc">First name</span></div>
+          <div class="flag-row"><span class="flag-key">-last</span><span class="flag-desc">Last name</span></div>
+          <div class="flag-row"><span class="flag-key">-nick</span><span class="flag-desc">Nickname or alias</span></div>
+          <div class="flag-row"><span class="flag-key">-birthdate</span><span class="flag-desc">Date of birth — <code>YYYY-MM-DD</code></span></div>
+          <div class="flag-row"><span class="flag-key">-partner</span><span class="flag-desc">Partner or spouse's name</span></div>
+          <div class="flag-row"><span class="flag-key">-pet</span><span class="flag-desc">Pet's name</span></div>
+          <div class="flag-row"><span class="flag-key">-child</span><span class="flag-desc">Child's or sibling's name</span></div>
+          <div class="flag-row"><span class="flag-key">-favorite</span><span class="flag-desc">Favorite team, band, or hobby</span></div>
+          <div class="flag-row"><span class="flag-key">-number</span><span class="flag-desc">Lucky or favorite number</span></div>
+          <div class="flag-row"><span class="flag-key">-city</span><span class="flag-desc">Hometown or current city</span></div>
+          <div class="flag-row"><span class="flag-key">-username</span><span class="flag-desc">Social handle or gaming alias</span></div>
+          <div class="flag-row"><span class="flag-key">-phone</span><span class="flag-desc">Phone number — non-digits stripped automatically</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="flag-group-label">Output</div>
+        <div class="flag-list">
+          <div class="flag-row"><span class="flag-key">-o</span><span class="flag-desc">Output file path — default <code>stdout</code></span></div>
+          <div class="flag-row"><span class="flag-key">-max</span><span class="flag-desc">Cap total candidates — <code>0</code> means unlimited</span></div>
+          <div class="flag-row"><span class="flag-key">-minlen</span><span class="flag-desc">Minimum candidate length — default <code>4</code></span></div>
+          <div class="flag-row"><span class="flag-key">-maxlen</span><span class="flag-desc">Maximum candidate length — default <code>32</code></span></div>
+        </div>
+      </div>
+      <div>
+        <div class="flag-group-label">Toggles</div>
+        <div class="flag-list">
+          <div class="flag-row"><span class="flag-key">-no-pairs</span><span class="flag-desc">Disable pairwise token combinations</span></div>
+          <div class="flag-row"><span class="flag-key">-no-leet</span><span class="flag-desc">Disable leet-speak substitutions</span></div>
+          <div class="flag-row"><span class="flag-key">-no-prefixes</span><span class="flag-desc">Disable prefix prepending</span></div>
+          <div class="flag-row"><span class="flag-key">-no-words</span><span class="flag-desc">Disable common-word mixing</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how-it-works">
+  <div class="section-label">Internals</div>
+  <h2>How generation works.</h2>
+  <p class="section-sub">Six deterministic stages. Every candidate passes through all of them before landing in the output.</p>
+
+  <div class="pipeline-wrap">
+    <span class="pipe-step">Profile</span>
+    <span class="pipe-arrow">→</span>
+    <span class="pipe-step">Tokenize</span>
+    <span class="pipe-arrow">→</span>
+    <span class="pipe-step">Mutate</span>
+    <span class="pipe-arrow">→</span>
+    <span class="pipe-step">Prefix / Suffix</span>
+    <span class="pipe-arrow">→</span>
+    <span class="pipe-step">Pair + Word-mix</span>
+    <span class="pipe-arrow">→</span>
+    <span class="pipe-step">Dedup &amp; Filter</span>
+    <span class="pipe-arrow">→</span>
+    <span class="pipe-step">Wordlist</span>
+  </div>
+
+  <div class="pipe-details">
+    <div class="pipe-item">
+      <span class="pipe-stage">Tokenize</span>
+      <span class="pipe-desc">Each non-empty field becomes a labeled token. Dates expand to <code>YYYY</code>, <code>YY</code>, <code>DDMM</code>, <code>MMDD</code>. Phone numbers to last-4, last-6, area code, and full digits. Initials combos and reversed spellings are derived here.</span>
+    </div>
+    <div class="pipe-item">
+      <span class="pipe-stage">Mutate</span>
+      <span class="pipe-desc">Every token gets lowercase, UPPERCASE, Title variants; all 2ⁿ per-character toggle combinations; and leet substitutions in 1-, 2-, and 3-rule combos.</span>
+    </div>
+    <div class="pipe-item">
+      <span class="pipe-stage">Prefix / Suffix</span>
+      <span class="pipe-desc">Each mutated form produces four candidates: bare, suffixed, prefixed, and wrapped — <code>john</code>, <code>john123</code>, <code>!john</code>, <code>!john123</code>.</span>
+    </div>
+    <div class="pipe-item">
+      <span class="pipe-stage">Pair</span>
+      <span class="pipe-desc">Every distinct token pair joined with each separator in both orderings, then case-mutated and suffixed: <code>john_smith</code>, <code>smith_john</code>, <code>john.smith</code>.</span>
+    </div>
+    <div class="pipe-item">
+      <span class="pipe-stage">Word-mix</span>
+      <span class="pipe-desc">Profile tokens paired with breach-corpus words — <code>johnlove</code>, <code>dragonsmith</code>. The full case/prefix/suffix pipeline re-applies. Words never pair with each other.</span>
+    </div>
+    <div class="pipe-item">
+      <span class="pipe-stage">Dedup &amp; filter</span>
+      <span class="pipe-desc"><code>map[string]struct{}</code> deduplication in O(1). Length bounds enforced at a single choke point. Results sorted and optionally capped.</span>
+    </div>
+  </div>
+</section>
+
+<!-- ETHICS -->
+<section class="section" id="ethics" style="padding-bottom:5rem;">
+  <div class="section-label">Authorized use only</div>
+  <h2>Use it responsibly.</h2>
+  <p class="section-sub" style="margin-bottom:1.25rem;">
+    Valence is built for contracted pentests and authorized security awareness campaigns.
+    Every field you supply should belong to a person or organization you have explicit, written authorization to test.
+  </p>
+  <div class="warn-box">
+    <div>
+      <strong>Unauthorized use is illegal.</strong> Generating wordlists targeting individuals or organizations without explicit authorization may violate the CFAA (US), Computer Misuse Act (UK), EU Cybercrime Directives, and equivalent statutes worldwide. You bear sole responsibility for legal compliance.
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-wrap">
+    <span class="footer-logo">val<em>ence</em></span>
+    <div class="footer-links">
+      <a href="https://github.com/g4m3m4g/Valence">GitHub</a>
+      <a href="https://github.com/g4m3m4g/Valence/releases">Releases</a>
+      <a href="https://github.com/g4m3m4g/Valence/issues">Issues</a>
+    </div>
+    <p class="footer-note">Built with Go · Zero external dependencies · Authorized use only</p>
+  </div>
+</footer>
+
+<script>
+  /* Terminal typewriter */
+  const cmd = '-first John -last Smith -pet Max -birthdate 1990-05-15';
+  const fullCmd = 'valence ' + cmd;
+  const output = [
+    '',
+    '  \x1b[dim]generating...\x1b[/dim]',
+    '',
+    '  \x1b[green]✓\x1b[/green]  51,284 candidates · 0.28s',
+    '',
+    'john',
+    'JOHN',
+    'j0hn',
+    'j@hn',
+    'jOhN',
+    'John123',
+    '!john',
+    'john_smith',
+    'smith_john',
+    'john.smith',
+    'johnmax',
+    'john1990',
+    'JOHN_SMITH',
+    '$m1th',
+    'johnlove',
+    'dragonjohn',
+    '...',
+  ];
+
+  const termBody = document.getElementById('term-body');
+  const termLine = document.getElementById('term-line');
+  const cursor   = document.getElementById('cursor');
+
+  let i = 0;
+  function type() {
+    if (i < fullCmd.length) {
+      termLine.textContent += fullCmd[i++];
+      setTimeout(type, i < 8 ? 80 : 38);
+    } else {
+      setTimeout(showOutput, 400);
+    }
+  }
+
+  function showOutput() {
+    cursor.remove();
+    termLine.insertAdjacentHTML('afterend', '<br>');
+    let idx = 0;
+    function nextLine() {
+      if (idx >= output.length) return;
+      const raw = output[idx++];
+      const div = document.createElement('div');
+
+      if (raw.includes('\x1b[green]✓')) {
+        div.innerHTML = '  <span style="color:#34d399">✓</span>  <span style="color:#8891ae">51,284 candidates · 0.28s</span>';
+      } else if (raw.includes('generating')) {
+        div.innerHTML = '  <span style="color:#4a5170">generating...</span>';
+      } else if (raw === '...') {
+        div.innerHTML = '<span style="color:#4a5170">...</span>';
+      } else if (raw === '') {
+        div.innerHTML = '&nbsp;';
+      } else {
+        div.style.color = '#8891ae';
+        div.textContent = raw;
+      }
+
+      termBody.appendChild(div);
+      termBody.scrollTop = termBody.scrollHeight;
+      setTimeout(nextLine, raw === '' ? 60 : 90);
+    }
+    nextLine();
+  }
+
+  setTimeout(type, 600);
+
+  /* Copy install command */
+  function copyInstall() {
+    navigator.clipboard.writeText('brew install valence').catch(() => {});
+    const btn = document.querySelector('.copy-btn');
+    const prev = btn.textContent;
+    btn.textContent = 'copied';
+    setTimeout(() => btn.textContent = prev, 1500);
+  }
+</script>
+</body>
+</html>
