@@ -96,10 +96,24 @@ func DefaultOptions() Options {
 			"!", "1", "12", "123", "0", "@",
 		},
 		CommonWords: []string{
-			"love", "iloveyou", "god", "king", "queen",
-			"dragon", "monkey", "master", "pass", "password",
-			"star", "shadow", "sunshine", "super", "baby",
-			"angel", "princess", "football", "forever", "lucky",
+			// affective — consistently top-ranked in personal passwords
+			"love", "iloveyou", "baby", "angel", "princess", "forever", "always",
+			// meta-passwords — people literally append or wrap these
+			"password", "pass", "secret", "letmein", "welcome", "login",
+			// keyboard walks — #1 and #2 most common non-name patterns in leaks
+			"qwerty", "asdf",
+			// pop culture / fantasy — dominate RockYou and Adobe breach lists
+			"dragon", "batman", "superman", "ninja", "wizard", "killer", "warrior",
+			// animals / mascots — frequent in breach corpora
+			"monkey", "tiger", "eagle", "wolf", "buster",
+			// nature / weather
+			"sunshine", "shadow", "thunder", "storm", "fire", "ice", "winter", "summer",
+			// sports
+			"football", "baseball", "soccer", "hockey",
+			// power / spiritual
+			"master", "god", "jesus", "king", "queen", "power", "freedom",
+			// positive / misc
+			"super", "lucky", "happy", "star", "hunter", "ranger",
 		},
 		IncludePairs:       true,
 		IncludeToggleCase:  true,
