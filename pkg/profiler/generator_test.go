@@ -5,6 +5,489 @@ import (
 	"testing"
 )
 
+func TestExtractDigits(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"(555) 123-4567", "5551234567"},
+		{"555.123.4567", "5551234567"},
+		{"+1-800-555-0199", "18005550199"},
+		{"no digits here", ""},
+		{"1234", "1234"},
+	}
+	for _, c := range cases {
+		if got := extractDigits(c.in); got != c.want {
+			t.Errorf("extractDigits(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+
+func TestPhoneTokens(t *testing.T) {
+	p := Profile{PhoneNumber: "(555) 123-4567"}
+	vals := tokenValues(p.Tokens())
+
+	for label, want := range map[string]bool{
+		"5551234567": true, // PhoneFull
+		"4567":       true, // PhoneLast4
+		"234567":     true, // PhoneLast6
+		"555":        true, // PhoneAreaCode
+		"123":        true, // PhoneExchange
+	} {
+		if vals[label] != want {
+			t.Errorf("phone token %q: got %v, want %v", label, vals[label], want)
+		}
+	}
+}
+
+func TestPhoneTokens_Short(t *testing.T) {
+	// Only 4 digits — only full and last4 should be derived (same value).
+	p := Profile{PhoneNumber: "4567"}
+	vals := tokenValues(p.Tokens())
+	if !vals["4567"] {
+		t.Error("expected PhoneFull/PhoneLast4 token 4567")
+	}
+	if vals["234567"] {
+		t.Error("PhoneLast6 should not appear for a 4-digit number")
+	}
+}
+
+func TestPhoneTokens_TooShort(t *testing.T) {
+	// Fewer than 4 digits — no tokens should be added.
+	p := Profile{PhoneNumber: "123"}
+	for _, tok := range p.Tokens() {
+		if tok.Label == "PhoneFull" || tok.Label == "PhoneLast4" {
+			t.Errorf("unexpected phone token for <4 digit input: %+v", tok)
+		}
+	}
+}
+
+func TestNewProfileFields_Tokens(t *testing.T) {
+	p := Profile{
+		City:           "Bangkok",
+		Username:       "j0hn_g4mer",
+		ChildName:      "Emma",
+		FavoriteNumber: "7",
+	}
+	vals := tokenValues(p.Tokens())
+
+	for _, want := range []string{"Bangkok", "j0hn_g4mer", "Emma", "7"} {
+		if !vals[want] {
+			t.Errorf("expected token %q for new profile field", want)
+		}
+	}
+}
+
+func TestNewProfileFields_ReversedInOutput(t *testing.T) {
+	p := Profile{City: "Paris", Username: "gamer", ChildName: "Emma"}
+	vals := tokenValues(p.Tokens())
+
+	for _, want := range []string{"sirap", "remag", "amme"} {
+		if !vals[want] {
+			t.Errorf("expected reversed token %q", want)
+		}
+	}
+}
+
+func TestGenerate_PhoneInOutput(t *testing.T) {
+	p := Profile{FirstName: "John", PhoneNumber: "(555) 123-4567"}
+	out := setOf(Generate(p, DefaultOptions()))
+
+	for _, want := range []string{"john4567", "4567john", "john5551234567"} {
+		if !out[want] {
+			t.Errorf("expected phone-derived candidate %q", want)
+		}
+	}
+}
+
+func TestGenerate_CommonWordMixing(t *testing.T) {
+	p := Profile{FirstName: "John", LastName: "Smith"}
+	opts := DefaultOptions()
+	out := setOf(Generate(p, opts))
+
+	// bare combos with separators
+	for _, want := range []string{
+		"johnlove", "lovejohn",
+		"john_love", "love_john",
+		"john.love", "love.john",
+		"smithlove", "lovesmith",
+	} {
+		if !out[want] {
+			t.Errorf("expected common-word combo %q in output", want)
+		}
+	}
+
+	// case variants of combos
+	for _, want := range []string{"Johnlove", "JOHNLOVE", "Lovejohn"} {
+		if !out[want] {
+			t.Errorf("expected case variant of common-word combo %q", want)
+		}
+	}
+
+	// combo + suffix
+	for _, want := range []string{"johnlove123", "johnlove!", "lovejohn1"} {
+		if !out[want] {
+			t.Errorf("expected combo+suffix %q", want)
+		}
+	}
+
+	// prefix + combo
+	for _, want := range []string{"!johnlove", "1lovejohn"} {
+		if !out[want] {
+			t.Errorf("expected prefix+combo %q", want)
+		}
+	}
+}
+
+func TestGenerate_CommonWordsNotStandalone(t *testing.T) {
+	// Common words should not appear by themselves (only combined with profile tokens).
+	p := Profile{FirstName: "John"}
+	opts := DefaultOptions()
+	out := setOf(Generate(p, opts))
+
+	for _, word := range opts.CommonWords {
+		// bare word alone should not be in output
+		if out[word] {
+			t.Errorf("common word %q should not appear standalone in output", word)
+		}
+		// words paired only with each other should not appear
+		for _, other := range opts.CommonWords {
+			if word == other {
+				continue
+			}
+			if out[word+other] || out[other+word] {
+				t.Errorf("common words should not be paired with each other: %q + %q", word, other)
+			}
+		}
+	}
+}
+
+func TestGenerate_CommonWordsDisabled(t *testing.T) {
+	p := Profile{FirstName: "John"}
+	opts := DefaultOptions()
+	opts.IncludeCommonWords = false
+	out := setOf(Generate(p, opts))
+
+	for _, unwanted := range []string{"johnlove", "lovejohn", "johndragon"} {
+		if out[unwanted] {
+			t.Errorf("common-word combo %q should not appear when IncludeCommonWords=false", unwanted)
+		}
+	}
+}
+
+func TestGenerate_CustomCommonWords(t *testing.T) {
+	p := Profile{FirstName: "John"}
+	opts := DefaultOptions()
+	opts.CommonWords = []string{"hero", "ninja"}
+	out := setOf(Generate(p, opts))
+
+	for _, want := range []string{"johnhero", "herojohn", "johnninja", "ninjajohn"} {
+		if !out[want] {
+			t.Errorf("expected custom common-word combo %q", want)
+		}
+	}
+	// default words should not appear
+	if out["johnlove"] {
+		t.Error("default word combo johnlove should not appear when custom words override it")
+	}
+}
+
+func TestGenerate_NoDuplicatesWithCommonWords(t *testing.T) {
+	p := Profile{FirstName: "John", LastName: "Smith", PetName: "Max"}
+	out := Generate(p, DefaultOptions())
+	seen := make(map[string]bool, len(out))
+	for _, w := range out {
+		if seen[w] {
+			t.Fatalf("duplicate candidate found: %q", w)
+		}
+		seen[w] = true
+	}
+}
+
+func TestPrependPrefixes(t *testing.T) {
+	got := PrependPrefixes("john", []string{"!", "1", "123"})
+	want := []string{"!john", "1john", "123john"}
+	if len(got) != len(want) {
+		t.Fatalf("PrependPrefixes returned %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("PrependPrefixes[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+
+	if got := PrependPrefixes("", []string{"!"}); got != nil {
+		t.Errorf("PrependPrefixes with empty base should return nil, got %v", got)
+	}
+	if got := PrependPrefixes("john", nil); got != nil {
+		t.Errorf("PrependPrefixes with nil prefixes should return nil, got %v", got)
+	}
+}
+
+func TestGenerate_PrefixPatterns(t *testing.T) {
+	p := Profile{FirstName: "John"}
+	opts := DefaultOptions()
+	out := setOf(Generate(p, opts))
+
+	// prefix__ : "!john", "123john"
+	for _, want := range []string{"!john", "123john", "1john", "@john"} {
+		if !out[want] {
+			t.Errorf("expected prefix-only candidate %q", want)
+		}
+	}
+
+	// prefix__suffix : "!john123", "123john!"
+	for _, want := range []string{"!john123", "123john!", "1john!"} {
+		if !out[want] {
+			t.Errorf("expected prefix+suffix candidate %q", want)
+		}
+	}
+
+	// __suffix still present
+	for _, want := range []string{"john123", "john!"} {
+		if !out[want] {
+			t.Errorf("expected suffix-only candidate %q", want)
+		}
+	}
+}
+
+func TestGenerate_PrefixDisabled(t *testing.T) {
+	p := Profile{FirstName: "John"}
+	opts := DefaultOptions()
+	opts.IncludePrefixes = false
+	out := setOf(Generate(p, opts))
+
+	for _, unwanted := range []string{"!john", "123john", "1john"} {
+		if out[unwanted] {
+			t.Errorf("prefix candidate %q should not appear when IncludePrefixes=false", unwanted)
+		}
+	}
+	// suffix-only should still be present
+	if !out["john123"] {
+		t.Error("suffix-only candidate john123 should still appear when prefixes disabled")
+	}
+}
+
+func TestGenerate_CustomPrefixes(t *testing.T) {
+	p := Profile{FirstName: "Jane"}
+	opts := DefaultOptions()
+	opts.Prefixes = []string{"xx"}
+	out := setOf(Generate(p, opts))
+
+	if !out["xxjane"] {
+		t.Error("expected custom prefix candidate xxjane")
+	}
+	if !out["xxjane!"] {
+		t.Error("expected custom prefix+suffix candidate xxjane!")
+	}
+	// default prefix should not appear
+	if out["!jane"] {
+		t.Error("default prefix !jane should not appear when custom prefixes override it")
+	}
+}
+
+func TestGenerate_NoDuplicatesWithPrefixes(t *testing.T) {
+	p := Profile{FirstName: "John", LastName: "Smith"}
+	out := Generate(p, DefaultOptions())
+	seen := make(map[string]bool, len(out))
+	for _, w := range out {
+		if seen[w] {
+			t.Fatalf("duplicate candidate found: %q", w)
+		}
+		seen[w] = true
+	}
+}
+
+func TestLeetVariants(t *testing.T) {
+	t.Run("single substitution", func(t *testing.T) {
+		if !setOf(LeetVariants("john"))["j0hn"] {
+			t.Error("expected j0hn (o→0)")
+		}
+	})
+
+	t.Run("two substitutions", func(t *testing.T) {
+		got := setOf(LeetVariants("jane"))
+		for _, want := range []string{"j@ne", "j4ne", "jan3", "j@n3", "j4n3"} {
+			if !got[want] {
+				t.Errorf("expected leet variant %q", want)
+			}
+		}
+	})
+
+	t.Run("three substitutions", func(t *testing.T) {
+		got := setOf(LeetVariants("master"))
+		// a→@, e→3, s→$ — three distinct char types
+		if !got["m@$t3r"] {
+			t.Error("expected m@$t3r (a→@, s→$, e→3)")
+		}
+	})
+
+	t.Run("original excluded", func(t *testing.T) {
+		for _, v := range LeetVariants("john") {
+			if v == "john" || v == "John" {
+				t.Errorf("LeetVariants should not include the original value, got %q", v)
+			}
+		}
+	})
+
+	t.Run("no substitutable chars", func(t *testing.T) {
+		// "zzz" has no chars in the leet table
+		if got := LeetVariants("zzz"); got != nil {
+			t.Errorf("expected nil for non-substitutable input, got %v", got)
+		}
+	})
+
+	t.Run("empty input", func(t *testing.T) {
+		if got := LeetVariants(""); got != nil {
+			t.Errorf("LeetVariants(\"\") = %v, want nil", got)
+		}
+	})
+
+	t.Run("no duplicates", func(t *testing.T) {
+		got := LeetVariants("assassin")
+		seen := map[string]bool{}
+		for _, v := range got {
+			if seen[v] {
+				t.Errorf("duplicate leet variant: %q", v)
+			}
+			seen[v] = true
+		}
+	})
+}
+
+func TestToggleCaseVariants(t *testing.T) {
+	t.Run("all 2^n combos present", func(t *testing.T) {
+		got := setOf(ToggleCaseVariants("ab"))
+		for _, want := range []string{"ab", "Ab", "aB", "AB"} {
+			if !got[want] {
+				t.Errorf("missing toggle variant %q", want)
+			}
+		}
+		if len(got) != 4 {
+			t.Errorf("want 4 variants for 2-letter input, got %d: %v", len(got), got)
+		}
+	})
+
+	t.Run("non-letter runes unchanged", func(t *testing.T) {
+		got := setOf(ToggleCaseVariants("a1b"))
+		// digit position fixed; only a and b toggle → 4 variants
+		for _, want := range []string{"a1b", "A1b", "a1B", "A1B"} {
+			if !got[want] {
+				t.Errorf("missing toggle variant %q", want)
+			}
+		}
+	})
+
+	t.Run("no duplicates", func(t *testing.T) {
+		got := ToggleCaseVariants("John")
+		seen := map[string]bool{}
+		for _, v := range got {
+			if seen[v] {
+				t.Errorf("duplicate toggle variant: %q", v)
+			}
+			seen[v] = true
+		}
+		if len(got) != 16 { // 2^4 for 4 letters
+			t.Errorf("want 16 variants for John, got %d", len(got))
+		}
+	})
+
+	t.Run("empty input", func(t *testing.T) {
+		if got := ToggleCaseVariants(""); got != nil {
+			t.Errorf("ToggleCaseVariants(\"\") = %v, want nil", got)
+		}
+	})
+}
+
+func TestProfileTokens_Initials(t *testing.T) {
+	p := Profile{FirstName: "John", LastName: "Smith"}
+	vals := tokenValues(p.Tokens())
+
+	if !vals["JSmith"] {
+		t.Error("expected InitialLastName token JSmith")
+	}
+	if !vals["JohnS"] {
+		t.Error("expected FirstNameInitial token JohnS")
+	}
+}
+
+func TestProfileTokens_Reversed(t *testing.T) {
+	p := Profile{FirstName: "John", LastName: "Smith", PetName: "Max"}
+	vals := tokenValues(p.Tokens())
+
+	if !vals["nhoj"] {
+		t.Error("expected reversed FirstName token nhoj")
+	}
+	if !vals["htims"] {
+		t.Error("expected reversed LastName token htims")
+	}
+	if !vals["xam"] {
+		t.Error("expected reversed PetName token xam")
+	}
+}
+
+func TestProfileTokens_PalindromeSkipped(t *testing.T) {
+	p := Profile{FirstName: "aba"}
+	vals := tokenValues(p.Tokens())
+	if vals["aba"] {
+		// "aba" reversed is still "aba" — should not appear as a *Rev token
+		// (it may appear as the FirstName token itself, but we check the Rev label)
+	}
+	for _, tok := range p.Tokens() {
+		if tok.Label == "FirstNameRev" {
+			t.Errorf("palindrome %q should not produce a Rev token, got label %q value %q", "aba", tok.Label, tok.Value)
+		}
+	}
+}
+
+func TestGenerate_LeetVariantsPresent(t *testing.T) {
+	p := Profile{FirstName: "John"}
+	out := setOf(Generate(p, DefaultOptions()))
+
+	for _, want := range []string{"j0hn", "J0hn", "J0HN"} {
+		if !out[want] {
+			t.Errorf("expected leet variant %q in output", want)
+		}
+	}
+}
+
+func TestGenerate_LeetDisabled(t *testing.T) {
+	p := Profile{FirstName: "John"}
+	opts := DefaultOptions()
+	opts.IncludeLeet = false
+	out := setOf(Generate(p, opts))
+
+	if out["j0hn"] {
+		t.Error("leet variant j0hn should not appear when IncludeLeet=false")
+	}
+}
+
+func TestGenerate_InitialsAndReversedPresent(t *testing.T) {
+	p := Profile{FirstName: "John", LastName: "Smith"}
+	out := setOf(Generate(p, DefaultOptions()))
+
+	for _, want := range []string{"JSmith", "JohnS", "nhoj", "htims"} {
+		if !out[want] {
+			t.Errorf("expected derived token %q in output", want)
+		}
+	}
+}
+
+// helpers
+
+func setOf(ss []string) map[string]bool {
+	m := make(map[string]bool, len(ss))
+	for _, s := range ss {
+		m[s] = true
+	}
+	return m
+}
+
+func tokenValues(tokens []Token) map[string]bool {
+	m := make(map[string]bool, len(tokens))
+	for _, tok := range tokens {
+		m[tok.Value] = true
+	}
+	return m
+}
+
 func TestCaseVariants(t *testing.T) {
 	got := CaseVariants("John")
 	want := map[string]bool{"John": true, "john": true, "JOHN": true}
