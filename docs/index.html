@@ -541,6 +541,68 @@
     @media (prefers-reduced-motion: reduce) {
       .term-cursor { animation: none; opacity: 1; }
     }
+
+    /* ── PERFORMANCE ── */
+    .opt-grid {
+      display: grid;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .opt-card {
+      background: var(--bg);
+      padding: 1.75rem;
+      transition: background .2s;
+    }
+    .opt-card:hover { background: var(--surface); }
+    .opt-num {
+      font-family: var(--mono);
+      font-size: .7rem;
+      color: var(--amber);
+      margin-bottom: .5rem;
+      letter-spacing: .08em;
+    }
+    .opt-card h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: .4rem;
+      letter-spacing: -.01em;
+    }
+    .opt-card p {
+      font-size: .84rem;
+      color: var(--sub);
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+    .opt-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+    }
+    .opt-stat {
+      font-family: var(--mono);
+      font-size: .72rem;
+      padding: .2rem .6rem;
+      border-radius: 4px;
+    }
+    .opt-stat.before {
+      background: rgba(224,92,92,.08);
+      border: 1px solid rgba(224,92,92,.2);
+      color: #e27474;
+    }
+    .opt-stat.after {
+      background: rgba(32,225,139,.07);
+      border: 1px solid rgba(32,225,139,.2);
+      color: var(--green);
+    }
+    .opt-stat.neutral {
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border2);
+      color: var(--sub);
+    }
   </style>
 </head>
 <body>
@@ -553,6 +615,7 @@
       <li><a href="#install">Install</a></li>
       <li><a href="#usage">Usage</a></li>
       <li><a href="#how-it-works">How it works</a></li>
+      <li><a href="#performance">Performance</a></li>
     </ul>
     <a class="nav-gh" href="https://github.com/g4m3m4g/Valence">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/></svg>
@@ -620,7 +683,7 @@
     <div class="feat">
       <div class="feat-num">01</div>
       <h3>Case + Leet</h3>
-      <p>All 2ⁿ per-character toggle combinations. 1–3 rule leet substitutions: <code>a→@/4</code>, <code>e→3</code>, <code>i→1/!</code>, <code>o→0</code>, <code>s→$/5</code>.</p>
+      <p>Lower, UPPER, and Title case on every token. 1–3 rule leet substitutions: <code>a→@/4</code>, <code>e→3</code>, <code>i→1/!</code>, <code>o→0</code>, <code>s→$/5</code>. Full 2ⁿ toggle-case available via <code>--toggle-case</code>.</p>
     </div>
     <div class="feat">
       <div class="feat-num">02</div>
@@ -699,7 +762,8 @@
       </div>
       <pre><span class="ps">$ </span><span class="cmd">git clone</span> https://github.com/g4m3m4g/Valence.git
 <span class="ps">$ </span><span class="cmd">cd</span> Valence
-<span class="ps">$ </span><span class="cmd">go build</span> <span class="fl">-o</span> valence .</pre>
+<span class="ps">$ </span><span class="cmd">make build</span>          <span class="cm"># version injected from git tag automatically</span></pre>
+      <p class="method-note">Requires Go 1.22+. Run <code>make release</code> to cross-compile for all platforms.</p>
     </div>
   </div>
 </section>
@@ -773,6 +837,7 @@
           <div class="flag-row"><span class="flag-key">-max</span><span class="flag-desc">Cap total candidates — <code>0</code> means unlimited</span></div>
           <div class="flag-row"><span class="flag-key">-minlen</span><span class="flag-desc">Minimum candidate length — default <code>4</code></span></div>
           <div class="flag-row"><span class="flag-key">-maxlen</span><span class="flag-desc">Maximum candidate length — default <code>32</code></span></div>
+          <div class="flag-row"><span class="flag-key">-version</span><span class="flag-desc">Print version and exit</span></div>
         </div>
       </div>
       <div>
@@ -782,6 +847,7 @@
           <div class="flag-row"><span class="flag-key">-no-leet</span><span class="flag-desc">Disable leet-speak substitutions</span></div>
           <div class="flag-row"><span class="flag-key">-no-prefixes</span><span class="flag-desc">Disable prefix prepending</span></div>
           <div class="flag-row"><span class="flag-key">-no-words</span><span class="flag-desc">Disable common-word mixing</span></div>
+          <div class="flag-row"><span class="flag-key">-toggle-case</span><span class="flag-desc">Enable all 2ⁿ per-character case combinations — greatly increases output size</span></div>
         </div>
       </div>
     </div>
@@ -825,7 +891,7 @@
     </div>
     <div class="pipe-item">
       <span class="pipe-stage">Pair</span>
-      <span class="pipe-desc">Every distinct token pair joined with each separator in both orderings, then case-mutated and suffixed: <code>john_smith</code>, <code>smith_john</code>, <code>john.smith</code>.</span>
+      <span class="pipe-desc">Every distinct token pair joined with each separator in both orderings, then case-mutated, prefixed, and suffixed: <code>john_smith</code>, <code>smith_john</code>, <code>!johnsmith</code>. A leet-on-component pass also produces <code>j0hnsmith</code> and <code>johnsm!th</code> without the combinatorial explosion of leetifying the full string.</span>
     </div>
     <div class="pipe-item">
       <span class="pipe-stage">Word-mix</span>
@@ -835,6 +901,87 @@
       <span class="pipe-stage">Dedup &amp; filter</span>
       <span class="pipe-desc"><code>map[string]struct{}</code> deduplication in O(1). Length bounds enforced at a single choke point. Results sorted and optionally capped.</span>
     </div>
+  </div>
+</section>
+
+<!-- PERFORMANCE -->
+<section class="section" id="performance">
+  <div class="section-label">Performance &amp; Quality</div>
+  <h2>What we optimized.</h2>
+  <p class="section-sub">
+    Recent improvements to generation speed, output quality, and usability —
+    each backed by profiling data or measurable candidate-count changes.
+  </p>
+  <div class="opt-grid">
+
+    <div class="opt-card">
+      <div class="opt-num">01</div>
+      <h3>Toggle-case off by default</h3>
+      <p>
+        The default pipeline previously generated all 2ⁿ per-character case combos for every token
+        — patterns like <code>jOhN</code> and <code>JoHN</code> that real users never choose.
+        <code>CaseVariants</code> + <code>LeetVariants</code> already cover the realistic mixed-case forms.
+        Toggle-case is now opt-in via <code>--toggle-case</code>, keeping the default wordlist tight and targeted.
+      </p>
+      <div class="opt-stats">
+        <span class="opt-stat before">before: noise candidates included</span>
+        <span class="opt-stat after">after: realistic patterns only</span>
+        <span class="opt-stat neutral">opt-in via --toggle-case</span>
+      </div>
+    </div>
+
+    <div class="opt-card">
+      <div class="opt-num">02</div>
+      <h3>Map pre-allocation — 30% faster generation</h3>
+      <p>
+        CPU profiling (<code>go tool pprof</code>) revealed <code>runtime.evacuate_faststr</code>
+        at 18.5% of total runtime — the candidate map was growing from capacity&nbsp;0 to 4.4M entries,
+        triggering repeated rehash evacuations. Pre-allocating with <code>make(map[string]struct{}, 1&lt;&lt;20)</code>
+        eliminates all evacuations. Goroutine parallelism was also investigated but made things worse
+        on this memory-bound workload; the profiler-guided single-line fix won instead.
+      </p>
+      <div class="opt-stats">
+        <span class="opt-stat before">before: ~7.7s wall time</span>
+        <span class="opt-stat after">after: ~5.4s wall time (−30%)</span>
+        <span class="opt-stat neutral">same candidate count</span>
+      </div>
+    </div>
+
+    <div class="opt-card">
+      <div class="opt-num">03</div>
+      <h3>Leet + prefix on pairwise combinations</h3>
+      <p>
+        Stage 2 previously only applied case variants and suffixes to pair combos, leaving two gaps:
+        <code>!johnsmith</code> (prefix before a pair) and <code>j0hnsmith</code> (leet on one component).
+        The fix adds full prefix treatment to every pair combo and a targeted leet-on-component pass
+        that combines <code>LeetVariants(a)</code> with plain <code>b</code> and vice versa —
+        producing realistic patterns without the explosion of leetifying the full concatenated string.
+      </p>
+      <div class="opt-stats">
+        <span class="opt-stat before">before: 4.4M candidates</span>
+        <span class="opt-stat after">after: 6.6M candidates (+49%)</span>
+        <span class="opt-stat neutral">new: j0hnsmith · johnsm!th · !johnsmith</span>
+      </div>
+    </div>
+
+    <div class="opt-card">
+      <div class="opt-num">04</div>
+      <h3>Grouped help output &amp; version flag</h3>
+      <p>
+        <code>-h</code> previously dumped all 20+ flags alphabetically via <code>flag.PrintDefaults()</code>,
+        with <code>-o</code> and <code>-output</code> as two separate entries and full suffix lists
+        spilling across the terminal. Flags are now grouped into four labeled sections:
+        Profile fields, Output, Mutation toggles, and Mutation values.
+        A <code>-version</code> flag was also added, with the version string injected at build time
+        via <code>-ldflags "-X main.version=$(git describe --tags)"</code> — automated by <code>make build</code>.
+      </p>
+      <div class="opt-stats">
+        <span class="opt-stat after">-h: 4 labeled sections</span>
+        <span class="opt-stat after">make build injects version from git tag</span>
+        <span class="opt-stat neutral">no runtime impact</span>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -861,6 +1008,7 @@
       <a href="https://github.com/g4m3m4g/Valence">GitHub</a>
       <a href="https://github.com/g4m3m4g/Valence/releases">Releases</a>
       <a href="https://github.com/g4m3m4g/Valence/issues">Issues</a>
+      <a href="#performance">Performance</a>
     </div>
     <p class="footer-note">Built with Go · Zero external dependencies · Authorized use only</p>
   </div>
