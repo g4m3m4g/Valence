@@ -21,6 +21,10 @@ import (
 	"github.com/g4m3m4g/valence/pkg/profiler"
 )
 
+// version is set at build time via -ldflags "-X main.version=vX.Y.Z".
+// Falls back to "dev" for local builds without ldflags.
+var version = "dev"
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -53,8 +57,9 @@ func run() error {
 		prefixesRaw   string
 		noWords       bool
 		wordsRaw      string
-		maxCandidates int
-		toggleCase    bool
+		maxCandidates  int
+		toggleCase     bool
+		showVersion    bool
 	)
 
 	defaults := profiler.DefaultOptions()
@@ -92,10 +97,11 @@ func run() error {
 	flag.StringVar(&wordsRaw, "words", strings.Join(defaults.CommonWords, ","),
 		"Comma-separated common words to mix with profile tokens")
 	flag.IntVar(&maxCandidates, "max", 0, "Maximum number of candidates to output (0 = unlimited)")
+	flag.BoolVar(&showVersion, "version", false, "Print version and exit")
 
 	flag.Usage = func() {
 		w := os.Stderr
-		fmt.Fprintln(w, "valence — targeted wordlist generator for authorized security audits & pentests")
+		fmt.Fprintf(w, "valence %s — targeted wordlist generator for authorized security audits & pentests\n", version)
 		fmt.Fprintln(w, "For AUTHORIZED security testing and awareness training only.")
 		fmt.Fprintln(w)
 		fmt.Fprintf(w, "Usage:\n  %s [flags]\n", os.Args[0])
@@ -141,6 +147,7 @@ func run() error {
 		pf("minlen", "int")
 		pf("maxlen", "int")
 		pf("max", "int")
+		pf("version", "")
 
 		fmt.Fprintln(w, "\nMutation toggles:")
 		pf("no-pairs", "")
@@ -157,6 +164,11 @@ func run() error {
 	}
 
 	flag.Parse()
+
+	if showVersion {
+		fmt.Fprintf(os.Stdout, "valence %s\n", version)
+		return nil
+	}
 
 	profile := profiler.Profile{
 		FirstName:      firstName,
