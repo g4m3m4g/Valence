@@ -15,7 +15,7 @@
 
   <br />
 
-  [Installation](#installation) · [Usage](#usage) · [Flags](#flags) · [How it works](#how-it-works) · [Website](https://g4m3m4g.github.io/Valence/)
+  [Installation](#installation) · [Usage](#usage) · [Flags](#flags) · [How it works](#how-it-works) · [Website](https://g4m3m4g.github.io/Valence/) · [Performance](https://g4m3m4g.github.io/Valence/#performance)
 
 </div>
 
@@ -52,8 +52,10 @@ go install github.com/g4m3m4g/valence@latest
 ```bash
 git clone https://github.com/g4m3m4g/Valence.git
 cd Valence
-go build -o valence .
+make build          # version injected from git tag automatically
 ```
+
+Run `make release` to cross-compile for all platforms (linux/darwin × amd64/arm64).
 
 ## Usage
 
@@ -135,6 +137,7 @@ valence -first John -birthdate 1990-05-15 | sort -u > candidates.txt
 | `-max` | Cap total candidates (`0` = unlimited) | `0` |
 | `-minlen` | Minimum candidate length | `4` |
 | `-maxlen` | Maximum candidate length | `32` |
+| `-version` | Print version and exit | — |
 
 ### Mutation toggles
 
@@ -144,6 +147,7 @@ valence -first John -birthdate 1990-05-15 | sort -u > candidates.txt
 | `-no-leet` | Disable leet-speak substitutions |
 | `-no-prefixes` | Disable prefix prepending |
 | `-no-words` | Disable common-word mixing |
+| `-toggle-case` | Enable all 2ⁿ per-character case combinations (greatly increases output size) |
 
 ### Custom lists
 
@@ -162,11 +166,11 @@ Profile → Tokenize → Mutate → Prefix/Suffix → Pair → Word-mix → Dedu
 
 **1. Tokenize** — Each non-empty field becomes a labeled token. Birthdates expand into `YYYY`, `YY`, `DDMM`, `MMDD`, and more. Phone numbers yield last-4, last-6, area code, and full digits. Initials combos (`JSmith`, `JohnS`) and reversed spellings (`nhoj`) are derived automatically.
 
-**2. Mutate** — Every token receives lowercase, UPPERCASE, and Title variants; all 2ⁿ per-character toggle-case combinations (`jOhN`, `JoHn`); and leet-speak substitutions in 1-, 2-, and 3-rule combos (`j0hn`, `j@ne`, `$m1th`).
+**2. Mutate** — Every token receives lowercase, UPPERCASE, and Title variants, plus leet-speak substitutions in 1-, 2-, and 3-rule combos (`j0hn`, `j@ne`, `$m1th`). Full 2ⁿ per-character toggle-case (`jOhN`, `JoHn`) is available via `-toggle-case` but off by default — those patterns rarely appear in real passwords and inflate output significantly.
 
 **3. Prefix / Suffix** — Each mutated form produces four candidates: bare (`john`), suffixed (`john123`), prefixed (`!john`), and wrapped (`!john123`).
 
-**4. Pair** — Every distinct token pair is joined with each separator in both orderings (`john_smith`, `smith_john`), then case-mutated and suffixed.
+**4. Pair** — Every distinct token pair is joined with each separator in both orderings (`john_smith`, `smith_john`), then case-mutated, prefixed, and suffixed (`!johnsmith`, `johnsmith123`). A leet-on-component pass also produces `j0hnsmith` and `johnsm!th` without the combinatorial explosion of leetifying the full combined string.
 
 **5. Word-mix** — Profile tokens are paired with breach-corpus common words (`johnlove`, `dragonsmith`). The full case/prefix/suffix pipeline re-applies. Words never pair with each other.
 
@@ -183,6 +187,7 @@ valence/
 ├── docs/
 │   └── index.html           # GitHub Pages site
 ├── .goreleaser.yaml          # Cross-platform builds + Homebrew tap
+├── Makefile                 # build / test / install / release targets
 ├── main.go                  # CLI entrypoint: flags, interactive mode, I/O
 ├── spinner.go               # Terminal progress indicator
 └── pkg/profiler/            # Core engine — zero external dependencies
@@ -192,10 +197,19 @@ valence/
     └── generator_test.go
 ```
 
-## Testing
+## Testing & Building
 
 ```bash
+make test          # run full test suite
+make build         # build with version injected from git tag
+make release       # cross-compile for linux/darwin × amd64/arm64
+make install       # install to /usr/local/bin
+```
+
+Or directly with Go:
+```bash
 go test ./... -v
+go build -o valence .
 ```
 
 ## Legal & Ethics
