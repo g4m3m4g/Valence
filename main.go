@@ -54,6 +54,7 @@ func run() error {
 		noWords       bool
 		wordsRaw      string
 		maxCandidates int
+		toggleCase    bool
 	)
 
 	defaults := profiler.DefaultOptions()
@@ -83,6 +84,7 @@ func run() error {
 		"Comma-separated separators used when combining two profile fields")
 	flag.BoolVar(&noPairs, "no-pairs", false, "Disable pairwise combination of distinct profile fields (smaller, faster output)")
 	flag.BoolVar(&noLeet, "no-leet", false, "Disable leet-speak substitutions (a→@/4, e→3, i→1/!, o→0, s→$/5, t→7, …)")
+	flag.BoolVar(&toggleCase, "toggle-case", false, "Enable per-character case toggling (all 2^n upper/lower combos per token; greatly increases output size)")
 	flag.BoolVar(&noPrefixes, "no-prefixes", false, "Disable prefix prepending (!, 1, 123, … before each candidate)")
 	flag.StringVar(&prefixesRaw, "prefixes", strings.Join(defaults.Prefixes, ","),
 		"Comma-separated prefixes to prepend to candidates")
@@ -151,6 +153,7 @@ func run() error {
 	opts.MaxLength = maxLen
 	opts.IncludePairs = !noPairs
 	opts.IncludeLeet = !noLeet
+	opts.IncludeToggleCase = toggleCase
 	opts.IncludePrefixes = !noPrefixes
 	opts.Prefixes = splitNonEmpty(prefixesRaw, false)
 	opts.IncludeCommonWords = !noWords

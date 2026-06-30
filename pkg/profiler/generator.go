@@ -116,7 +116,7 @@ func DefaultOptions() Options {
 			"super", "lucky", "happy", "star", "hunter", "ranger",
 		},
 		IncludePairs:       true,
-		IncludeToggleCase:  true,
+		IncludeToggleCase:  false,
 		IncludeLeet:        true,
 		IncludePrefixes:    true,
 		IncludeCommonWords: true,
