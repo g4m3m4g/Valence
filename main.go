@@ -15,15 +15,26 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 	"time"
 
 	"github.com/g4m3m4g/valence/pkg/profiler"
 )
 
-// version is set at build time via -ldflags "-X main.version=vX.Y.Z".
-// Falls back to "dev" for local builds without ldflags.
+// version is set at build time via -ldflags "-X main.version=vX.Y.Z" (make build / GoReleaser).
+// Falls back to the module version embedded by `go install pkg@vX.Y.Z`, or
+// "dev" for plain local builds with no version information.
 var version = "dev"
+
+func init() {
+	if version == "dev" {
+		if info, ok := debug.ReadBuildInfo(); ok &&
+			info.Main.Version != "" && info.Main.Version != "(devel)" {
+			version = info.Main.Version
+		}
+	}
+}
 
 func main() {
 	if err := run(); err != nil {
