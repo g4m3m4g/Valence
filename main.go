@@ -21,6 +21,10 @@ import (
 	"github.com/g4m3m4g/valence/pkg/profiler"
 )
 
+// version is set at build time via -ldflags "-X main.version=vX.Y.Z".
+// Falls back to "dev" for local builds without ldflags.
+var version = "dev"
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -53,7 +57,9 @@ func run() error {
 		prefixesRaw   string
 		noWords       bool
 		wordsRaw      string
-		maxCandidates int
+		maxCandidates  int
+		toggleCase     bool
+		showVersion    bool
 	)
 
 	defaults := profiler.DefaultOptions()
@@ -83,6 +89,7 @@ func run() error {
 		"Comma-separated separators used when combining two profile fields")
 	flag.BoolVar(&noPairs, "no-pairs", false, "Disable pairwise combination of distinct profile fields (smaller, faster output)")
 	flag.BoolVar(&noLeet, "no-leet", false, "Disable leet-speak substitutions (a→@/4, e→3, i→1/!, o→0, s→$/5, t→7, …)")
+	flag.BoolVar(&toggleCase, "toggle-case", false, "Enable per-character case toggling (all 2^n upper/lower combos per token; greatly increases output size)")
 	flag.BoolVar(&noPrefixes, "no-prefixes", false, "Disable prefix prepending (!, 1, 123, … before each candidate)")
 	flag.StringVar(&prefixesRaw, "prefixes", strings.Join(defaults.Prefixes, ","),
 		"Comma-separated prefixes to prepend to candidates")
@@ -90,15 +97,78 @@ func run() error {
 	flag.StringVar(&wordsRaw, "words", strings.Join(defaults.CommonWords, ","),
 		"Comma-separated common words to mix with profile tokens")
 	flag.IntVar(&maxCandidates, "max", 0, "Maximum number of candidates to output (0 = unlimited)")
+	flag.BoolVar(&showVersion, "version", false, "Print version and exit")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "valence - targeted wordlist generator for security awareness audits & pentests\n\n")
-		fmt.Fprintf(os.Stderr, "For AUTHORIZED security testing and awareness training only.\n\n")
-		fmt.Fprintf(os.Stderr, "Usage:\n  %s [flags]\n\nFlags:\n", os.Args[0])
-		flag.PrintDefaults()
+		w := os.Stderr
+		fmt.Fprintf(w, "valence %s — targeted wordlist generator for authorized security audits & pentests\n", version)
+		fmt.Fprintln(w, "For AUTHORIZED security testing and awareness training only.")
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "Usage:\n  %s [flags]\n", os.Args[0])
+
+		// pf prints one flag line: "  -name type   description [default]"
+		// Long defaults (suffix/word lists) are truncated to keep lines readable.
+		pf := func(name, typ string) {
+			f := flag.Lookup(name)
+			if f == nil {
+				return
+			}
+			left := "  -" + name
+			if typ != "" {
+				left += " " + typ
+			}
+			dv := f.DefValue
+			def := ""
+			if dv != "" && dv != "false" && dv != "0" {
+				if len(dv) > 48 {
+					dv = dv[:45] + "…"
+				}
+				def = " [" + dv + "]"
+			}
+			fmt.Fprintf(w, "%-26s %s%s\n", left, f.Usage, def)
+		}
+
+		fmt.Fprintln(w, "\nProfile fields:")
+		pf("first", "string")
+		pf("last", "string")
+		pf("nick", "string")
+		pf("birthdate", "string")
+		pf("partner", "string")
+		pf("pet", "string")
+		pf("favorite", "string")
+		pf("phone", "string")
+		pf("city", "string")
+		pf("username", "string")
+		pf("child", "string")
+		pf("number", "string")
+
+		fmt.Fprintln(w, "\nOutput:")
+		fmt.Fprintf(w, "%-26s %s\n", "  -o / -output string", "Output file path (default: stdout)")
+		pf("minlen", "int")
+		pf("maxlen", "int")
+		pf("max", "int")
+		pf("version", "")
+
+		fmt.Fprintln(w, "\nMutation toggles:")
+		pf("no-pairs", "")
+		pf("no-leet", "")
+		pf("no-prefixes", "")
+		pf("no-words", "")
+		pf("toggle-case", "")
+
+		fmt.Fprintln(w, "\nMutation values:")
+		pf("suffixes", "string")
+		pf("separators", "string")
+		pf("prefixes", "string")
+		pf("words", "string")
 	}
 
 	flag.Parse()
+
+	if showVersion {
+		fmt.Fprintf(os.Stdout, "valence %s\n", version)
+		return nil
+	}
 
 	profile := profiler.Profile{
 		FirstName:      firstName,
@@ -151,6 +221,7 @@ func run() error {
 	opts.MaxLength = maxLen
 	opts.IncludePairs = !noPairs
 	opts.IncludeLeet = !noLeet
+	opts.IncludeToggleCase = toggleCase
 	opts.IncludePrefixes = !noPrefixes
 	opts.Prefixes = splitNonEmpty(prefixesRaw, false)
 	opts.IncludeCommonWords = !noWords

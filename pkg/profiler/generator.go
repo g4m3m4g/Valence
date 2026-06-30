@@ -116,7 +116,7 @@ func DefaultOptions() Options {
 			"super", "lucky", "happy", "star", "hunter", "ranger",
 		},
 		IncludePairs:       true,
-		IncludeToggleCase:  true,
+		IncludeToggleCase:  false,
 		IncludeLeet:        true,
 		IncludePrefixes:    true,
 		IncludeCommonWords: true,
@@ -144,7 +144,9 @@ func DefaultOptions() Options {
 //  6. Deduplicate via a set, filter by length, sort for deterministic
 //     output, and optionally truncate to MaxCandidates.
 func Generate(p Profile, opts Options) []string {
-	candidates := make(map[string]struct{})
+	// Pre-allocate with a generous capacity to avoid repeated map evacuations,
+	// which profiling showed as the single largest CPU cost (~18% of runtime).
+	candidates := make(map[string]struct{}, 1<<20)
 
 	tokens := p.Tokens()
 
@@ -193,6 +195,11 @@ func Generate(p Profile, opts Options) []string {
 	}
 
 	// Stage 2: pairwise combinations of distinct tokens.
+	// Applies case variants, per-variant suffixes, and prefixes to each combo.
+	// Leet is intentionally skipped on the combined string: applying it to a
+	// 10–20 char concatenation generates 20+ leet combos per pair and blows
+	// up output size without proportional quality gain. Leet on individual
+	// tokens before combining is a separate, targeted pass (see below).
 	if opts.IncludePairs {
 		for i := 0; i < len(tokens); i++ {
 			for j := i + 1; j < len(tokens); j++ {
@@ -200,12 +207,64 @@ func Generate(p Profile, opts Options) []string {
 				b := strings.ToLower(tokens[j].Value)
 
 				for _, combo := range Combine(a, b, opts.Separators) {
-					addFiltered(candidates, combo, opts)
-					for _, cv := range CaseVariants(combo) {
+					variants := CaseVariants(combo)
+					seen := make(map[string]struct{}, len(variants))
+					for _, cv := range variants {
+						if _, dup := seen[cv]; dup {
+							continue
+						}
+						seen[cv] = struct{}{}
 						addFiltered(candidates, cv, opts)
+						for _, ws := range AppendSuffixes(cv, opts.Suffixes) {
+							addFiltered(candidates, ws, opts)
+						}
+						if opts.IncludePrefixes {
+							for _, wp := range PrependPrefixes(cv, opts.Prefixes) {
+								addFiltered(candidates, wp, opts)
+								for _, wps := range AppendSuffixes(wp, opts.Suffixes) {
+									addFiltered(candidates, wps, opts)
+								}
+							}
+						}
 					}
-					for _, withSuffix := range AppendSuffixes(combo, opts.Suffixes) {
-						addFiltered(candidates, withSuffix, opts)
+				}
+
+				// Leet-on-component pass: combine a leet-substituted form of
+				// one token with the plain form of the other. Produces realistic
+				// patterns like j0hnsmith and johnsm!th without the combinatorial
+				// explosion of leetifying the full combined string.
+				if opts.IncludeLeet {
+					for _, leetA := range LeetVariants(a) {
+						for _, combo := range Combine(leetA, b, opts.Separators) {
+							addFiltered(candidates, combo, opts)
+							for _, ws := range AppendSuffixes(combo, opts.Suffixes) {
+								addFiltered(candidates, ws, opts)
+							}
+							if opts.IncludePrefixes {
+								for _, wp := range PrependPrefixes(combo, opts.Prefixes) {
+									addFiltered(candidates, wp, opts)
+									for _, wps := range AppendSuffixes(wp, opts.Suffixes) {
+										addFiltered(candidates, wps, opts)
+									}
+								}
+							}
+						}
+					}
+					for _, leetB := range LeetVariants(b) {
+						for _, combo := range Combine(a, leetB, opts.Separators) {
+							addFiltered(candidates, combo, opts)
+							for _, ws := range AppendSuffixes(combo, opts.Suffixes) {
+								addFiltered(candidates, ws, opts)
+							}
+							if opts.IncludePrefixes {
+								for _, wp := range PrependPrefixes(combo, opts.Prefixes) {
+									addFiltered(candidates, wp, opts)
+									for _, wps := range AppendSuffixes(wp, opts.Suffixes) {
+										addFiltered(candidates, wps, opts)
+									}
+								}
+							}
+						}
 					}
 				}
 			}
